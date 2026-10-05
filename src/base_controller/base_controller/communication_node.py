@@ -13,7 +13,7 @@ CMD_SET_VELOCITY = 0x01
 # Konstanta Protokol (Arduino -> ROS2)
 RX_HEADER_1 = 0xBB
 RX_HEADER_2 = 0x66
-CMD_ODOMETRY = 0x02
+CMD_ODOMETRY = 0x01 # Arduino mengirim feedback menggunakan ID 0x01 (CMD_SET_VELOCITY)
 
 # Faktor Pengali (Multiplier) untuk konversi Float (m/s) ke Int16 (misal mm/s)
 # Karena int16 tidak bisa menampung pecahan, kita kalikan sebelum dikirim.

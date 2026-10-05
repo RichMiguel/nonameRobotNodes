@@ -49,31 +49,54 @@ Package berbasis `ament_cmake` untuk menampung file konfigurasi dan peluncuran (
    source install/setup.bash
    ```
 
-## 🗺️ Cara Penggunaan (Usage)
+## 🗺️ Cara Menjalankan Sistem (Step-by-Step)
 
-### Fase 1: Memetakan Ruangan (Mapping)
-Gunakan peluncuran SLAM Toolbox untuk membuat peta ruangan baru secara manual.
-```bash
-ros2 launch robot_navigation slam_mapping.launch.py
-```
-Setelah peta di RViz terlihat utuh, simpan peta dengan menjalankan (di terminal baru):
-```bash
-ros2 run nav2_map_server map_saver_cli -f ~/workspace/src/robot_navigation/maps/peta_ruangan
-```
+Untuk menjalankan robot ini, Anda akan membagi tugas antara **Raspberry Pi** (sebagai komputasi utama di robot) dan **Laptop** (sebagai visualisasi jarak jauh). Pastikan keduanya terhubung pada **jaringan Wi-Fi/LAN yang sama**.
 
-### Fase 2: Navigasi Otonom (Operasi Normal)
-Gunakan peluncuran master (*Master Bringup*) yang akan menyalakan komunikasi Arduino, Odometri, Lidar, dan Nav2 (Map Server + AMCL) menggunakan peta yang sudah disimpan.
+### Langkah 1: Persiapan Jaringan (ROS_DOMAIN_ID)
+Sistem ROS 2 menggunakan protokol DDS untuk mendeteksi perangkat secara otomatis tanpa perlu IP statis. Kita menggunakan ID **42** agar tidak bertabrakan dengan robot lain.
+* **Di Raspberry Pi:** (Sudah terkonfigurasi otomatis di `~/.bashrc`).
+* **Di Laptop Ubuntu Anda:** Buka terminal dan jalankan:
+  ```bash
+  echo 'export ROS_DOMAIN_ID=42' >> ~/.bashrc
+  echo 'export ROS_LOCALHOST_ONLY=0' >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+### Langkah 2: Menyalakan Robot (Di Raspberry Pi)
+Buka terminal (atau via SSH) ke Raspberry Pi Anda, dan jalankan *Master Bringup*. Perintah ini akan menyalakan komunikasi Serial ke Arduino, mengaktifkan Lidar, memuat peta, dan menjalankan AI Navigasi (Nav2):
 ```bash
 ros2 launch robot_navigation robot_bringup.launch.py
 ```
-Setelah itu, pastikan di log bahwa FSM Node telah masuk ke state `LISTEN`. Anda bisa memberikan target kordinat Navigasi dari RViz2 (Gunakan tombol *2D Goal Pose*).
+*Tunggu hingga log menunjukkan pesan bahwa sistem telah aktif dan FSM Node masuk ke status `LISTEN`.*
+
+### Langkah 3: Visualisasi dan Kontrol RViz2 (Di Laptop)
+Buka terminal baru di **Laptop** Anda, lalu ikuti langkah ini:
+1. Ketik `ros2 topic list`. Jika konfigurasi jaringan Anda benar, Anda akan melihat topik-topik robot bermunculan (seperti `/scan`, `/map`, `/odom`).
+2. Jalankan aplikasi RViz2:
+   ```bash
+   rviz2
+   ```
+3. **Setup RViz2:**
+   * Di panel kiri (*Displays*), ubah **Fixed Frame** menjadi `map`.
+   * Klik tombol **Add** di pojok kiri bawah, lalu tambahkan visualisasi berikut:
+     - **Map**: Pada menu *Topic*, pilih `/map`. (Untuk melihat peta statis).
+     - **Map** (sekali lagi): Pada menu *Topic*, pilih `/global_costmap/costmap`. (Untuk melihat area rintangan Nav2).
+     - **LaserScan**: Pada menu *Topic*, pilih `/scan`. (Titik merah dari Lidar).
+     - **RobotModel** / **TF**: Untuk melihat posisi dan orientasi robot.
+4. **Memberikan Perintah Navigasi:**
+   * Klik tombol **2D Goal Pose** di *toolbar* atas RViz2.
+   * Klik pada area peta dan tarik kursor untuk menentukan arah hadap (orientasi) tujuan.
+   * Raspberry Pi akan menerima perintah tersebut, menghitung rute, dan mengirimkan kecepatan ke Arduino!
 
 ## 📄 Struktur Direktori
 ```text
 workspace/
 ├── src/
 │   ├── base_controller/          # (Package Node Python Kustom)
-│   └── robot_navigation/         # (Package Launch & Config)
-├── DOCS.md                       # (Dokumentasi Rinci Blueprint Arsitektur)
-└── LOGS.md                       # (Log Sejarah Pengembangan Proyek)
+│   ├── robot_navigation/         # (Package Launch & Config)
+│   └── sllidar_ros2/             # (Driver Resmi RPLidar A1)
+├── nonameRobotKinematic/         # (Source Code Arduino PlatformIO - Git Ignored)
+├── DOCS.md                       # (Blueprint Arsitektur)
+└── LOGS.md                       # (Log Sejarah Proyek)
 ```
