@@ -22,6 +22,8 @@ class FSMNode(Node):
     def __init__(self):
         super().__init__('fsm_node')
         
+        self.declare_parameter('bypass_health_check', False)
+        
         # 1. State: BOOT
         self.state = RobotState.BOOT
         self.get_logger().info("System BOOTING: Inisialisasi FSM Node...")
@@ -73,10 +75,14 @@ class FSMNode(Node):
             # 2. State: CHECK (Memastikan semua node dan sensor menyala)
             self.get_logger().info("CHECKING Kesiapan Sistem...", once=True)
             
+            bypass = self.get_parameter('bypass_health_check').get_parameter_value().bool_value
             nav2_ready = self.nav_to_pose_client.wait_for_server(timeout_sec=0.1)
             
-            if self.lidar_ready and self.odom_ready and nav2_ready:
-                self.get_logger().info("Semua sistem SIAP (Lidar, Odom, Nav2). Memulai LISTEN.")
+            if bypass or (self.lidar_ready and self.odom_ready and nav2_ready):
+                if bypass:
+                    self.get_logger().warn("BYPASS MODE AKTIF: Mengabaikan sensor hardware. Memulai LISTEN.")
+                else:
+                    self.get_logger().info("Semua sistem SIAP (Lidar, Odom, Nav2). Memulai LISTEN.")
                 self.transition_to(RobotState.LISTEN)
             else:
                 self.get_logger().debug(f"Menunggu... Lidar:{self.lidar_ready}, Odom:{self.odom_ready}, Nav2:{nav2_ready}")

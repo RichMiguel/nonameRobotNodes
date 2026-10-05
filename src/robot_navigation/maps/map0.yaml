@@ -1,0 +1,12 @@
+free_thresh: 0.196
+height_cells: 800
+image: map0.pgm
+map_name: slampy_map
+negate: 0
+occupied_thresh: 0.65
+origin:
+- 0.0
+- 0.0
+- 0.0
+resolution: 0.05
+width_cells: 800

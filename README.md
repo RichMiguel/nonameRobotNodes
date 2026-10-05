@@ -1,102 +1,73 @@
-# NoName Robot Nodes
+# Noname Robot Nodes (ROS 2 Humble)
 
-Proyek ROS 2 Humble untuk robot bergerak otomatis (Autonomous Mobile Robot) berbasis **Holonomic X-Drive**. Proyek ini menggunakan **Raspberry Pi 4B** sebagai prosesor utama (*High-Level*) untuk menjalankan Navigation 2 (Nav2) Stack, dan **Arduino Mega** sebagai *Low-Level Controller* penggerak motor.
+Repositori ini berisi *high-level control* untuk robot holonomic (X-Drive) berbasis ROS 2 Humble. Sistem ini berjalan di atas Raspberry Pi 4 dan berkomunikasi dengan Arduino Mega (PlatformIO) melalui protokol Serial (UART).
 
-## 🌟 Ikhtisar Arsitektur
+## 🚀 Fitur Utama
+1. **Navigasi Otonom (Nav2):** Menggunakan AMCL, Global/Local Costmaps, dan Regulated Pure Pursuit (RPP) Controller.
+2. **Mapping (SLAM Toolbox):** Pembangunan peta ruangan 2D secara *real-time*.
+3. **Komunikasi Biner Native (Little-Endian):** Pengiriman *payload* Serial ultra-cepat tanpa *parsing string*, sinkron 100% dengan prosesor AVR Arduino Mega.
+4. **Finite State Machine (FSM):** Penanganan status robot secara mandiri (BOOT, CHECK, LISTEN, CALCULATE, MOVE).
+5. **Hardware Bypass Mode:** Mode simulasi/pengujian navigasi tanpa perlu menyambungkan sensor Lidar dan *driver* motor fisik.
 
-Sistem ini didesain secara modular, tangguh, dan efisien untuk komunikasi berkecepatan tinggi dengan mikrokontroler. 
+---
 
-* **Drive Type:** Holonomic X-Drive (Mecanum / Omni wheels)
-* **SBC:** Raspberry Pi 4B (8GB RAM)
-* **Microcontroller:** Arduino Mega (menangani PID, Inverse/Forward Kinematics)
-* **Sensor Utama:** RPLidar A1
-* **Framework:** ROS 2 Humble + Nav2 + SLAM Toolbox
+## 🛠️ Instalasi & Persiapan
 
-## 🧩 ROS 2 Packages & Nodes
-
-Proyek ini terbagi menjadi dua *package* kustom utama di dalam *workspace*:
-
-### 1. `base_controller`
-Package Python kustom yang menjembatani komunikasi ke *hardware* dan logika *state machine*.
-* **`communication_node.py`**: Jembatan Serial (UART) ke Arduino. Menggunakan protokol frame biner kustom (Header `0xAA 0x55`), algoritma **XOR Checksum** untuk integritas data, dan **Fixed-Point Scaling** (Float ke int16 dikalikan 1000) untuk menghemat 50% *bandwidth* serial. Node ini meneruskan `/cmd_vel` ke Arduino dan menerima *raw velocities* ($V_x, V_y, \omega_z$) dari Arduino.
-* **`odometry_node.py`**: Node integrasi kinematik Holonomic. Mengambil *raw velocities*, menghitung (integrasi) posisi $X, Y, \Theta$, lalu mempublikasikan `/odom` beserta Transformasi TF (`odom` -> `base_link`).
-* **`fsm_node.py`**: Otak utama (*Brain*) robot menggunakan pola *Finite State Machine*. Siklus hidupnya adalah:
-  `BOOT` -> `CHECK` (memastikan Lidar, Odom, & Nav2 siap) -> `LISTEN` -> `CALCULATE` -> `MOVE` -> `RECALCULATE` (Recovery) -> `STOP`.
-
-### 2. `robot_navigation`
-Package berbasis `ament_cmake` untuk menampung file konfigurasi dan peluncuran (Launch) ekosistem standar ROS 2.
-* **Nav2 Config** (`nav2_params.yaml`): Konfigurasi komprehensif untuk *AMCL*, *Costmaps* (Footprint 60x60 cm), algoritma *Regulated Pure Pursuit* (RPP), dan *Velocity Smoother* (Limit $1.0$ m/s).
-* **SLAM Config** (`mapper_params_online_async.yaml`): Parameter untuk menjalankan SLAM Toolbox saat membuat peta awal.
-* **Master Launch** (`robot_bringup.launch.py`): Menjalankan seluruh sistem (*Base Controller*, Lidar, dan Nav2) secara serentak.
-
-## 🚀 Instalasi & Kompilasi (Build)
-
-1. **Persiapan Dependencies**
-   Pastikan Anda telah menginstal ROS 2 Humble dan package pendukung Nav2 & Lidar:
-   ```bash
-   sudo apt update
-   sudo apt install ros-humble-nav2-bringup ros-humble-sllidar-ros2 ros-humble-slam-toolbox
-   ```
-
-2. **Clone Repository & Build**
-   ```bash
-   mkdir -p ~/workspace/src
-   cd ~/workspace/src
-   git clone https://github.com/<YOUR_USERNAME>/nonameRobotNodes.git .
-   
-   cd ~/workspace
-   colcon build --symlink-install
-   source install/setup.bash
-   ```
-
-## 🗺️ Cara Menjalankan Sistem (Step-by-Step)
-
-Untuk menjalankan robot ini, Anda akan membagi tugas antara **Raspberry Pi** (sebagai komputasi utama di robot) dan **Laptop** (sebagai visualisasi jarak jauh). Pastikan keduanya terhubung pada **jaringan Wi-Fi/LAN yang sama**.
-
-### Langkah 1: Persiapan Jaringan (ROS_DOMAIN_ID)
-Sistem ROS 2 menggunakan protokol DDS untuk mendeteksi perangkat secara otomatis tanpa perlu IP statis. Kita menggunakan ID **42** agar tidak bertabrakan dengan robot lain.
-* **Di Raspberry Pi:** (Sudah terkonfigurasi otomatis di `~/.bashrc`).
-* **Di Laptop Ubuntu Anda:** Buka terminal dan jalankan:
-  ```bash
-  echo 'export ROS_DOMAIN_ID=42' >> ~/.bashrc
-  echo 'export ROS_LOCALHOST_ONLY=0' >> ~/.bashrc
-  source ~/.bashrc
-  ```
-
-### Langkah 2: Menyalakan Robot (Di Raspberry Pi)
-Buka terminal (atau via SSH) ke Raspberry Pi Anda, dan jalankan *Master Bringup*. Perintah ini akan menyalakan komunikasi Serial ke Arduino, mengaktifkan Lidar, memuat peta, dan menjalankan AI Navigasi (Nav2):
+### 1. Dependensi (Di Raspberry Pi)
+Pastikan Anda sudah menginstal paket-paket berikut:
 ```bash
-ros2 launch robot_navigation robot_bringup.launch.py
+sudo apt install -y ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-tf-transformations python3-transforms3d
 ```
-*Tunggu hingga log menunjukkan pesan bahwa sistem telah aktif dan FSM Node masuk ke status `LISTEN`.*
 
-### Langkah 3: Visualisasi dan Kontrol RViz2 (Di Laptop)
-Buka terminal baru di **Laptop** Anda, lalu ikuti langkah ini:
-1. Ketik `ros2 topic list`. Jika konfigurasi jaringan Anda benar, Anda akan melihat topik-topik robot bermunculan (seperti `/scan`, `/map`, `/odom`).
-2. Jalankan aplikasi RViz2:
-   ```bash
-   rviz2
-   ```
-3. **Setup RViz2:**
-   * Di panel kiri (*Displays*), ubah **Fixed Frame** menjadi `map`.
-   * Klik tombol **Add** di pojok kiri bawah, lalu tambahkan visualisasi berikut:
-     - **Map**: Pada menu *Topic*, pilih `/map`. (Untuk melihat peta statis).
-     - **Map** (sekali lagi): Pada menu *Topic*, pilih `/global_costmap/costmap`. (Untuk melihat area rintangan Nav2).
-     - **LaserScan**: Pada menu *Topic*, pilih `/scan`. (Titik merah dari Lidar).
-     - **RobotModel** / **TF**: Untuk melihat posisi dan orientasi robot.
-4. **Memberikan Perintah Navigasi:**
-   * Klik tombol **2D Goal Pose** di *toolbar* atas RViz2.
-   * Klik pada area peta dan tarik kursor untuk menentukan arah hadap (orientasi) tujuan.
-   * Raspberry Pi akan menerima perintah tersebut, menghitung rute, dan mengirimkan kecepatan ke Arduino!
+### 2. Konfigurasi Jaringan DDS
+Untuk memantau robot menggunakan laptop, pastikan Raspberry Pi dan Laptop Ubuntu Anda berada di jaringan Wi-Fi yang sama, lalu setel `ROS_DOMAIN_ID` di **kedua perangkat** (misal ID = 42).
 
-## 📄 Struktur Direktori
-```text
-workspace/
-├── src/
-│   ├── base_controller/          # (Package Node Python Kustom)
-│   ├── robot_navigation/         # (Package Launch & Config)
-│   └── sllidar_ros2/             # (Driver Resmi RPLidar A1)
-├── nonameRobotKinematic/         # (Source Code Arduino PlatformIO - Git Ignored)
-├── DOCS.md                       # (Blueprint Arsitektur)
-└── LOGS.md                       # (Log Sejarah Proyek)
+```bash
+echo 'export ROS_DOMAIN_ID=42' >> ~/.bashrc
+echo 'export ROS_LOCALHOST_ONLY=0' >> ~/.bashrc
+source ~/.bashrc
 ```
+
+---
+
+## 🎮 Cara Penggunaan: Control Panel Interaktif
+
+Untuk memudahkan operasional, kami telah menyediakan antarmuka terminal interaktif. Anda tidak perlu lagi menghafal perintah ROS 2 yang panjang.
+
+Cukup jalankan perintah ini di root *workspace* Raspberry Pi Anda:
+```bash
+cd ~/workspace
+./start_robot.sh
+```
+
+**Menu yang tersedia:**
+1. **Mulai Mapping (SLAM Toolbox):** Robot akan mengaktifkan Lidar dan membangun peta (*rviz2* digunakan untuk *teleop* / pergerakan).
+2. **Simpan Peta Hasil Mapping:** Menyimpan peta `.yaml` dan `.pgm` langsung ke dalam folder `src/robot_navigation/maps/`.
+3. **Navigasi Normal (Production):** Mengaktifkan komunikasi Arduino, Lidar, dan AI Nav2 menggunakan peta yang dipilih.
+4. **Simulasi / Test Navigasi (Hardware OFF):** Mem-Bypass Lidar dan Serial. Mode ini akan menerbitkan *Fake TF* (`map -> odom -> base_link`) sehingga Anda bisa memonitor peta dan alur rute (*Path Planning*) di RViz2 dari laptop meskipun robot tidak dirakit.
+5. **Build Ulang Sistem:** Memanggil `colcon build --symlink-install`.
+
+---
+
+## 💻 Setup RViz2 (Visualisasi di Laptop)
+
+Saat robot sedang dalam mode **Navigasi**, ikuti langkah berikut di Laptop Anda:
+1. Buka terminal baru dan ketik `rviz2`.
+2. Ubah **Fixed Frame** menjadi `map`.
+3. Klik tombol **Add** (kiri bawah) -> tab **By topic**:
+   - Cari `/map` -> pilih **Map**. *(Penting: Buka panah pengaturan Map di kiri layar, dan pastikan **Durability Policy** disetel ke `Transient Local` agar peta muncul).*
+   - Cari `/global_costmap/costmap` -> pilih **Map** (ubah *Color Scheme* ke `costmap`).
+   - Cari `/scan` -> pilih **LaserScan** (titik rintangan aktual).
+4. Klik tombol **Add** -> tab **By display type** -> pilih **TF** (untuk melihat posisi robot).
+5. **Mulai Navigasi:** Gunakan tombol **2D Goal Pose** di *toolbar* atas untuk memberikan perintah bergerak!
+
+---
+
+## 📄 Logika Perbaikan Terkini
+* **`base_controller`**: Berisi *node* Python. 
+  - `communication_node.py` telah disinkronkan ke **Little-Endian** (`<hhh`) sesuai bitshift Arduino.
+  - `fsm_node.py` mendukung mode `bypass_health_check`.
+* **`robot_navigation`**: Berisi launch file dan konfigurasi.
+  - `nav2_params.yaml` disesuaikan untuk standar sintaks **ROS 2 Humble** (menggunakan garis miring `/` pada nama *plugin*).
+  - Parameter Behavior Tree (*BT XML*) dikembalikan ke konfigurasi sistem bawaan.
+* **`start_robot.sh`**: *Dashboard* utama pengembang.
