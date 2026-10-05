@@ -15,3 +15,8 @@
 - **Decision (Mapping vs Localization)**: Menetapkan `slam_toolbox` murni untuk fase Mapping saja. Fase Lokalisasi akan menggunakan standar Nav2 (`map_server` dan `amcl`) agar peta berformat `.pgm` bisa diedit secara manual. File lokalisasi SLAM Toolbox dihapus untuk menjaga kebersihan *workspace*.
 - **WIP**: Mengonfigurasi parameter Nav2 lengkap (`nav2_params.yaml`) meliputi batasan kecepatan motor, footprint 60x60, RPP, dan toleransi target 10cm.
 - **WIP**: Menyusun file master `robot_bringup.launch.py` untuk mengeksekusi Arduino Serial, Odometri, Lidar, Nav2, dan FSM Node secara serentak.
+
+## [2026-10-05]
+- **Refactor (Packages)**: Mengubah struktur workspace menjadi lebih standar (ROS 2 Best Practices). Mengganti nama package `base_controller` menjadi `robot_base`, dan `robot_navigation` menjadi `robot_bringup`.
+- **Feature**: Membuat package baru `robot_gazebo` sebagai wadah khusus untuk simulasi 3D.
+- **Refactor (Launch Files)**: Memecah `robot_bringup.launch.py` menjadi file-file yang sangat modular: `base.launch.py` (untuk node hardware & TF internal) dan `lidar.launch.py` (untuk sensor). Memudahkan pergantian mode antara hardware sungguhan dan simulasi Gazebo (`ignore_hardware:=true`).

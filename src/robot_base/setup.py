@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'base_controller'
+package_name = 'robot_base'
 
 setup(
     name=package_name,
@@ -24,9 +24,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'communication_node = base_controller.communication_node:main',
-            'odometry_node = base_controller.odometry_node:main',
-            'fsm_node = base_controller.fsm_node:main',
+            'communication_node = robot_base.communication_node:main',
+            'odometry_node = robot_base.odometry_node:main',
+            'fsm_node = robot_base.fsm_node:main',
         ],
     },
 )

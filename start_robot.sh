@@ -2,7 +2,7 @@
 
 # Konfigurasi Path
 WORKSPACE_DIR="/home/pi/workspace"
-MAPS_DIR="$WORKSPACE_DIR/src/robot_navigation/maps"
+MAPS_DIR="$WORKSPACE_DIR/src/robot_bringup/maps"
 
 # Fungsi untuk menampilkan header
 print_header() {
@@ -55,7 +55,7 @@ while true; do
             echo "Memulai SLAM Toolbox..."
             echo "Gunakan RViz2 di laptop untuk memandu robot berkeliling."
             source $WORKSPACE_DIR/install/setup.bash
-            ros2 launch robot_navigation slam_mapping.launch.py
+            ros2 launch robot_bringup slam_mapping.launch.py
             ;;
         2)
             print_header
@@ -75,7 +75,7 @@ while true; do
             if select_map; then
                 echo "MENGAKTIFKAN HARDWARE & NAVIGASI..."
                 source $WORKSPACE_DIR/install/setup.bash
-                ros2 launch robot_navigation robot_bringup.launch.py map:="$MAPS_DIR/$SELECTED_MAP"
+                ros2 launch robot_bringup robot_bringup.launch.py map:="$MAPS_DIR/$SELECTED_MAP"
             fi
             ;;
         4)
@@ -83,7 +83,7 @@ while true; do
             if select_map; then
                 echo "MENGAKTIFKAN SIMULASI (HARDWARE BYPASS)..."
                 source $WORKSPACE_DIR/install/setup.bash
-                ros2 launch robot_navigation robot_bringup.launch.py map:="$MAPS_DIR/$SELECTED_MAP" ignore_hardware:=true
+                ros2 launch robot_bringup robot_bringup.launch.py map:="$MAPS_DIR/$SELECTED_MAP" ignore_hardware:=true
             fi
             ;;
         5)

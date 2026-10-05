@@ -16,7 +16,7 @@ def generate_launch_description():
 
     declare_slam_params_file_cmd = DeclareLaunchArgument(
         'slam_params_file',
-        default_value=os.path.join(get_package_share_directory("robot_navigation"),
+        default_value=os.path.join(get_package_share_directory("robot_bringup"),
                                    'config', 'mapper_params_online_async.yaml'),
         description='Lokasi file parameter konfigurasi SLAM Toolbox (Mapping)')
 
