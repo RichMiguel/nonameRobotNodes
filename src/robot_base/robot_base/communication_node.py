@@ -38,7 +38,8 @@ class CommunicationNode(Node):
             self.serial_port = None
 
         # Subscribers
-        self.cmd_vel_sub = self.create_subscription(Twist, 'cmd_vel_smoothed', self.cmd_vel_callback, 10)
+        # Subscribe ke /cmd_vel (output dari velocity_smoother)
+        self.cmd_vel_sub = self.create_subscription(Twist, 'cmd_vel', self.cmd_vel_callback, 10)
         
         # Publishers
         # Kita mem-publish TwistStamped karena hanya menerima Vx, Vy, Wz dari Arduino.
@@ -70,9 +71,12 @@ class CommunicationNode(Node):
         
         # Packing 3 int16 (6 byte) format little-endian ('<hhh')
         payload = struct.pack('<hhh', vx, vy, wz)
-        frame_without_checksum = bytes([TX_HEADER_1, TX_HEADER_2, CMD_SET_VELOCITY]) + payload
-        checksum = self.calculate_checksum(frame_without_checksum)
-        full_frame = frame_without_checksum + bytes([checksum])
+        
+        # Checksum = XOR (Command ID + Payload), H1 & H2 tidak dihitung
+        data_to_checksum = bytes([CMD_SET_VELOCITY]) + payload
+        checksum = self.calculate_checksum(data_to_checksum)
+        
+        full_frame = bytes([TX_HEADER_1, TX_HEADER_2, CMD_SET_VELOCITY]) + payload + bytes([checksum])
         
         self.serial_port.write(full_frame)
 
@@ -103,7 +107,7 @@ class CommunicationNode(Node):
                 if len(payload) == payload_len:
                     checksum_byte = self.serial_port.read(1)
                     if checksum_byte:
-                        frame_to_check = bytes([RX_HEADER_1, RX_HEADER_2, cmd]) + payload
+                        frame_to_check = bytes([cmd]) + payload
                         calc_chk = self.calculate_checksum(frame_to_check)
                         
                         if calc_chk == checksum_byte[0]:

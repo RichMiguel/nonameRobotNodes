@@ -27,6 +27,8 @@ setup(
             'communication_node = robot_base.communication_node:main',
             'odometry_node = robot_base.odometry_node:main',
             'fsm_node = robot_base.fsm_node:main',
+            'teleop_wasd_node = robot_base.teleop_wasd_node:main',
+            'xdrive_kinematics_node = robot_base.xdrive_kinematics_node:main',
         ],
     },
 )

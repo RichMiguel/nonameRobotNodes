@@ -66,8 +66,41 @@ class FSMNode(Node):
             self.current_goal = msg
             self.transition_to(RobotState.CALCULATE)
         elif self.state == RobotState.MOVE:
-            self.get_logger().warn("Robot sedang bergerak! Target baru ditolak atau antrikan.")
-            # TODO: Logika pembatalan target lama (Preempt) bisa ditaruh di sini
+            self.get_logger().warn("Robot sedang bergerak! Target baru menggantikan target lama (Preempting).")
+            self.current_goal = msg
+            # Kita pindah ke calculate untuk mengirim target baru
+            self.transition_to(RobotState.CALCULATE)
+
+    # --- Callbacks untuk Action Client Nav2 ---
+    def goal_response_callback(self, future):
+        try:
+            goal_handle = future.result()
+            if not goal_handle.accepted:
+                self.get_logger().error("Target ditolak oleh Nav2! (Mungkin di luar jangkauan atau error waktu)")
+                self.transition_to(RobotState.LISTEN)
+                return
+                
+            self.get_logger().info("Target diterima oleh Nav2. Robot mulai bergerak...")
+            self._get_result_future = goal_handle.get_result_async()
+            self._get_result_future.add_done_callback(self.get_result_callback)
+        except Exception as e:
+            self.get_logger().error(f"Error saat menerima respon goal: {e}")
+            self.transition_to(RobotState.LISTEN)
+
+    def get_result_callback(self, future):
+        # Saat hasil dari Nav2 kembali, ubah state kembali ke LISTEN
+        # pastikan tidak sedang di-preempt oleh CALCULATE yang baru
+        if self.state == RobotState.MOVE:
+            try:
+                status = future.result().status
+                if status == 4: # 4 = SUCCEEDED
+                    self.get_logger().info("Robot telah SAMPAI di tujuan!")
+                else:
+                    self.get_logger().warn(f"Navigasi dibatalkan atau gagal. (Status code: {status})")
+            except Exception as e:
+                self.get_logger().error(f"Error saat mendapat hasil navigasi: {e}")
+            
+            self.transition_to(RobotState.LISTEN)
 
     # --- Main FSM Loop ---
     def fsm_loop(self):
@@ -94,18 +127,23 @@ class FSMNode(Node):
             
         elif self.state == RobotState.CALCULATE:
             # 4. State: CALCULATE
-            self.get_logger().info("Mengirim target ke Nav2 (Action Server)...")
+            self.get_logger().info("Mengirim target posisi ke Nav2 Action Server...")
+            
+            # Update timestamp ke waktu simulasi terkini agar tidak ditolak oleh Nav2
+            self.current_goal.header.stamp = self.get_clock().now().to_msg()
             
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose = self.current_goal
             
-            # TODO: Gunakan send_goal_async() sesungguhnya untuk Nav2
-            # Untuk sekarang kita asumsikan sukses dan langsung MOVE
+            # Kirim goal ke Nav2 secara Asynchronous
+            self._send_goal_future = self.nav_to_pose_client.send_goal_async(goal_msg)
+            self._send_goal_future.add_done_callback(self.goal_response_callback)
+            
             self.transition_to(RobotState.MOVE)
             
         elif self.state == RobotState.MOVE:
             # 5. State: MOVE
-            # TODO: Pantau get_result_async() dari ActionClient
+            # Diam menunggu respon dari ActionClient (melalui get_result_callback)
             pass
             
         elif self.state == RobotState.RECALCULATE:
