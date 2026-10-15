@@ -34,7 +34,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='link_base_laser',
-        arguments=['-0.1', '0', '0.2', '3.14159265', '0', '0', 'base_link', 'laser'],
+        arguments=['0', '0', '0.2', '3.14159265', '0', '0', 'base_link', 'laser'],
         parameters=[{'use_sim_time': use_sim_time}],
         condition=UnlessCondition(use_gazebo)
     )
