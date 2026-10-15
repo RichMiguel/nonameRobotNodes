@@ -75,8 +75,8 @@ local_costmap:
       robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
-      width: 3.0
-      height: 3.0
+      width: 3
+      height: 3
       resolution: 0.05
       footprint: '[ [0.25, 0.25], [0.25, -0.25], [-0.25, -0.25], [-0.25, 0.25] ]'
       plugins: ["obstacle_layer", "inflation_layer"]
