@@ -2,18 +2,19 @@ import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # 1. Deklarasi Parameter Launch
+    bringup_dir = get_package_share_directory('robot_bringup')
+    config_dir = os.path.join(bringup_dir, 'config')
+
     map_yaml_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     use_sim_time = LaunchConfiguration('use_sim_time')
     ignore_hardware = LaunchConfiguration('ignore_hardware')
     use_gazebo = LaunchConfiguration('use_gazebo')
-
-    bringup_dir = get_package_share_directory('robot_bringup')
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
@@ -22,8 +23,13 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'config', 'nav2_params.yaml'),
-        description='Lokasi file parameter konfigurasi Nav2')
+        default_value='nav2_params_tight.yaml',
+        description='Nama file konfigurasi Nav2 di robot_bringup/config/ (misal: nav2_params_tight.yaml atau nav2_params.yaml) atau path absolut ke file .yaml')
+
+    # Resolusi cerdas params_file: jika nama file saja, cari di robot_bringup/config/, pastikan berekstensi .yaml
+    resolved_params_file = PythonExpression([
+        "('", params_file, "' if '", params_file, "'.startswith('/') else '", config_dir, "/' + '", params_file, "') + ('.yaml' if not ('", params_file, "'.endswith('.yaml') or '", params_file, "'.endswith('.yml')) else '')"
+    ])
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
@@ -97,7 +103,7 @@ def generate_launch_description():
         launch_arguments={
             'map': map_yaml_file,
             'use_sim_time': use_sim_time,
-            'params_file': params_file}.items(),
+            'params_file': resolved_params_file}.items(),
         condition=__import__('launch').conditions.UnlessCondition(run_slam)
     )
 
@@ -108,7 +114,7 @@ def generate_launch_description():
         launch_arguments={
             'use_sim_time': use_sim_time,
             'use_velocity_smoother': 'true',
-            'params_file': params_file}.items(),
+            'params_file': resolved_params_file}.items(),
         condition=__import__('launch').conditions.IfCondition(run_nav2)
     )
 
