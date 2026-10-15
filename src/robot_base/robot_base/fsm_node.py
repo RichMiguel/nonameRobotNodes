@@ -6,7 +6,8 @@ import time
 
 from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
-from geometry_msgs.msg import PoseStamped, TwistStamped
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 
 class RobotState(Enum):
@@ -33,9 +34,9 @@ class FSMNode(Node):
         self.odom_ready = False
         self.current_goal = None
         
-        # Subscribers untuk health check
+        # Subscribers untuk health check (Pilar 1: Menunggu sensor & odometri aktif)
         self.create_subscription(LaserScan, 'scan', self.scan_callback, 10)
-        self.create_subscription(TwistStamped, 'raw_odom_vel', self.odom_callback, 10)
+        self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
         
         # Subscriber untuk menerima target tujuan dari RViz2/Dashboard
         self.create_subscription(PoseStamped, 'goal_pose', self.goal_callback, 10)
@@ -70,6 +71,8 @@ class FSMNode(Node):
             self.current_goal = msg
             # Kita pindah ke calculate untuk mengirim target baru
             self.transition_to(RobotState.CALCULATE)
+        elif self.state == RobotState.CHECK:
+            self.get_logger().warn("Sistem masih dalam tahap CHECK (menunggu kesiapan LiDAR/Odom/Nav2). Target diabaikan.")
 
     # --- Callbacks untuk Action Client Nav2 ---
     def goal_response_callback(self, future):
@@ -115,10 +118,15 @@ class FSMNode(Node):
                 if bypass:
                     self.get_logger().warn("BYPASS MODE AKTIF: Mengabaikan sensor hardware. Memulai LISTEN.")
                 else:
-                    self.get_logger().info("Semua sistem SIAP (Lidar, Odom, Nav2). Memulai LISTEN.")
+                    self.get_logger().info("Semua sistem SIAP (LiDAR, Odometri, Nav2 Stack). Memulai state LISTEN.")
                 self.transition_to(RobotState.LISTEN)
             else:
-                self.get_logger().debug(f"Menunggu... Lidar:{self.lidar_ready}, Odom:{self.odom_ready}, Nav2:{nav2_ready}")
+                self.get_logger().info(
+                    f"Menunggu kesiapan sistem... [LiDAR: {'OK' if self.lidar_ready else 'MENUNGGU'}, "
+                    f"Odometri: {'OK' if self.odom_ready else 'MENUNGGU'}, "
+                    f"Nav2: {'OK' if nav2_ready else 'MENUNGGU'}]",
+                    throttle_duration_sec=2.0
+                )
                 
         elif self.state == RobotState.LISTEN:
             # 3. State: LISTEN

@@ -1,6 +1,7 @@
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess, TimerAction, RegisterEventHandler, Shutdown
+from launch.conditions import IfCondition
 from launch.event_handlers import OnShutdown, OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -28,6 +29,8 @@ def generate_launch_description():
         'run_nav2', default_value='true', description='Jalankan Nav2 Stack di Gazebo')
     declare_run_slam_cmd = DeclareLaunchArgument(
         'run_slam', default_value='false', description='Jalankan SLAM Toolbox di Gazebo')
+    declare_use_rviz_cmd = DeclareLaunchArgument(
+        'use_rviz', default_value='true', description='Buka RViz2 secara otomatis dengan use_sim_time=true')
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map', default_value=os.path.join(bringup_pkg, 'maps', 'lab_map.yaml'),
         description='Lokasi file peta yaml')
@@ -50,6 +53,7 @@ def generate_launch_description():
     model_file = LaunchConfiguration('model')
     run_nav2 = LaunchConfiguration('run_nav2')
     run_slam = LaunchConfiguration('run_slam')
+    use_rviz = LaunchConfiguration('use_rviz')
     map_yaml_file = LaunchConfiguration('map')
     use_voice = LaunchConfiguration('use_voice')
     params_file = LaunchConfiguration('params_file')
@@ -139,7 +143,8 @@ def generate_launch_description():
             '/model/xdrive/joint/rear_left_wheel_joint/cmd_vel@std_msgs/msg/Float64]gz.msgs.Double',
             '/model/xdrive/joint/rear_right_wheel_joint/cmd_vel@std_msgs/msg/Float64]gz.msgs.Double',
         ],
-        output='screen'
+        output='screen',
+        parameters=[{'use_sim_time': True}]
     )
 
     # 4b. Fallback static TF: menjamin frame LiDAR selalu terhubung ke robot TF tree (laser),
@@ -181,11 +186,26 @@ def generate_launch_description():
         }.items()
     )
 
+    # 6. RViz2 dengan konfigurasi Nav2 dan use_sim_time:=true
+    rviz_config_file = os.path.join(
+        get_package_share_directory('nav2_bringup'), 'rviz', 'nav2_default_view.rviz'
+    )
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(use_rviz)
+    )
+
     ld = LaunchDescription()
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_model_cmd)
     ld.add_action(declare_run_nav2_cmd)
     ld.add_action(declare_run_slam_cmd)
+    ld.add_action(declare_use_rviz_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_use_voice_cmd)
@@ -198,10 +218,12 @@ def generate_launch_description():
     ld.add_action(shutdown_clean_handler)
     ld.add_action(gz_exit_handler)
     ld.add_action(node_robot_state_publisher)
-    ld.add_action(TimerAction(period=5.0, actions=[spawn_entity]))
     ld.add_action(ros_gz_bridge)
     ld.add_action(static_lidar_fallback_tf)
     ld.add_action(node_xdrive_kinematics)
-    ld.add_action(robot_bringup_launch)
+    # 1. Spawn model robot setelah Gazebo selesai memuat world (~3.0 detik)
+    ld.add_action(TimerAction(period=3.0, actions=[spawn_entity]))
+    # 2. Jalankan Nav2 & RViz setelah robot selesai di-spawn dan stream odom/tf aktif (~7.5 detik)
+    ld.add_action(TimerAction(period=7.5, actions=[robot_bringup_launch, rviz_node]))
 
     return ld

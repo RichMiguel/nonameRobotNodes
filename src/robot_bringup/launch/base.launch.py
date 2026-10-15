@@ -9,6 +9,8 @@ def generate_launch_description():
     ignore_hardware = LaunchConfiguration('ignore_hardware')
     use_gazebo = LaunchConfiguration('use_gazebo')
 
+    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+
     declare_ignore_hardware_cmd = DeclareLaunchArgument(
         'ignore_hardware',
         default_value='false',
@@ -21,12 +23,19 @@ def generate_launch_description():
         description='Jika true, kita berada dalam Gazebo (TF odom dipublish oleh Gazebo)'
     )
 
+    declare_use_sim_time_cmd = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='false',
+        description='Gunakan waktu simulasi jika berjalan di Gazebo'
+    )
+
     # Hanya jalankan static tf base_link->laser jika BUKAN di Gazebo (karena URDF Gazebo sudah mempublishnya)
     static_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='link_base_laser',
-        arguments=['0', '0', '0.2', '0', '0', '0', 'base_link', 'laser'],
+        arguments=['-0.1', '0', '0.2', '3.14159265', '0', '0', 'base_link', 'laser'],
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=UnlessCondition(use_gazebo)
     )
     
@@ -36,6 +45,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='fake_odom_tf',
         arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(PythonExpression(["'", ignore_hardware, "' == 'true' and '", use_gazebo, "' == 'false'"]))
     )
 
@@ -44,6 +54,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='fake_map_tf',
         arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(PythonExpression(["'", ignore_hardware, "' == 'true' and '", use_gazebo, "' == 'false'"]))
     )
 
@@ -52,6 +63,7 @@ def generate_launch_description():
         executable='communication_node',
         name='communication_node',
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=UnlessCondition(ignore_hardware)
     )
 
@@ -61,11 +73,10 @@ def generate_launch_description():
         executable='odometry_node',
         name='odometry_node',
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=UnlessCondition(use_gazebo)
     )
     
-    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-
     fsm_node = Node(
         package='robot_base',
         executable='fsm_node',
@@ -80,6 +91,7 @@ def generate_launch_description():
     ld = LaunchDescription()
     ld.add_action(declare_ignore_hardware_cmd)
     ld.add_action(declare_use_gazebo_cmd)
+    ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(static_tf_node)
     ld.add_action(fake_odom_tf_node)
     ld.add_action(fake_map_tf_node)

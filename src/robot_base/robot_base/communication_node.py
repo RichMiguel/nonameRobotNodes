@@ -24,7 +24,7 @@ class CommunicationNode(Node):
     def __init__(self):
         super().__init__('communication_node')
         
-        self.declare_parameter('port', '/dev/ttyUSB0')
+        self.declare_parameter('port', '/dev/ttyACM0')
         self.declare_parameter('baudrate', 115200)
         
         port = self.get_parameter('port').value

@@ -5,19 +5,50 @@ import math
 from geometry_msgs.msg import TwistStamped, TransformStamped
 from nav_msgs.msg import Odometry
 from tf2_ros import TransformBroadcaster
-import tf_transformations
+
+def euler_to_quaternion(roll, pitch, yaw):
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+    qw = cr * cp * cy + sr * sp * sy
+    return qx, qy, qz, qw
 
 class OdometryNode(Node):
     def __init__(self):
         super().__init__('odometry_node')
+        
+        # Parameter Konfigurasi Odometri
+        self.declare_parameter('odom_frequency', 50.0)      # Frekuensi publish TF & odom (50 Hz)
+        self.declare_parameter('odom_frame_id', 'odom')
+        self.declare_parameter('base_frame_id', 'base_link')
+        self.declare_parameter('vel_timeout', 0.5)          # Kecepatan dianggap 0 jika data serial terhenti > 0.5s
+        
+        self.odom_frame = self.get_parameter('odom_frame_id').value
+        self.base_frame = self.get_parameter('base_frame_id').value
+        self.vel_timeout = self.get_parameter('vel_timeout').value
+        frequency = self.get_parameter('odom_frequency').value
+        timer_period = 1.0 / frequency
         
         # Variabel State Odometri (Posisi Relatif Robot)
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
         
-        # Menyimpan waktu terakhir pesan diterima untuk menghitung dt
-        self.last_time = self.get_clock().now()
+        # Cache Kecepatan Terkini dari Hardware
+        self.vx = 0.0
+        self.vy = 0.0
+        self.wz = 0.0
+        
+        # Timer & Watchdog
+        self.last_timer_time = self.get_clock().now()
+        self.last_vel_msg_time = self.get_clock().now()
         
         # Subscribe ke kecepatan mentah (Vx, Vy, Wz) dari communication_node
         self.vel_sub = self.create_subscription(
@@ -31,41 +62,59 @@ class OdometryNode(Node):
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
         
-        self.get_logger().info("Odometry Node (Holonomic) telah berjalan.")
+        # Pilar 2: Timer Periodik Mandiri (Continuous 50Hz TF Publisher)
+        # Menjamin TF selalu ada dan tidak pernah starvation bahkan saat startup atau serial buffering
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+        
+        self.get_logger().info(f"Odometry Node (Holonomic) aktif: publishing periodik pada {frequency} Hz.")
 
     def vel_callback(self, msg: TwistStamped):
+        self.vx = msg.twist.linear.x
+        self.vy = msg.twist.linear.y
+        self.wz = msg.twist.angular.z
+        self.last_vel_msg_time = self.get_clock().now()
+
+    def timer_callback(self):
         current_time = self.get_clock().now()
+        dt = (current_time - self.last_timer_time).nanoseconds / 1e9
+        self.last_timer_time = current_time
         
-        # Hitung selisih waktu (delta time) dalam detik
-        dt = (current_time - self.last_time).nanoseconds / 1e9
-        self.last_time = current_time
-        
-        # Dapatkan kecepatan di koordinat lokal robot (base_link)
-        vx = msg.twist.linear.x
-        vy = msg.twist.linear.y
-        wz = msg.twist.angular.z
-        
+        # Abaikan delta time abnormal (misal clock jump atau dt negatif)
+        if dt <= 0.0 or dt > 1.0:
+            return
+            
+        # Watchdog: jika data serial tidak masuk selama > vel_timeout, anggap robot diam
+        vel_age = (current_time - self.last_vel_msg_time).nanoseconds / 1e9
+        if vel_age > self.vel_timeout:
+            active_vx = 0.0
+            active_vy = 0.0
+            active_wz = 0.0
+        else:
+            active_vx = self.vx
+            active_vy = self.vy
+            active_wz = self.wz
+            
         # Integrasi Kinematik untuk Robot Holonomic
-        # Mengubah pergerakan lokal (base_link) menjadi pergerakan global (odom)
-        delta_x = (vx * math.cos(self.theta) - vy * math.sin(self.theta)) * dt
-        delta_y = (vx * math.sin(self.theta) + vy * math.cos(self.theta)) * dt
-        delta_theta = wz * dt
+        delta_x = (active_vx * math.cos(self.theta) - active_vy * math.sin(self.theta)) * dt
+        delta_y = (active_vx * math.sin(self.theta) + active_vy * math.cos(self.theta)) * dt
+        delta_theta = active_wz * dt
         
-        # Update posisi terkini
         self.x += delta_x
         self.y += delta_y
         self.theta += delta_theta
         
-        # Konversi theta (Yaw) ke Quaternion untuk ROS 2
-        q = tf_transformations.quaternion_from_euler(0.0, 0.0, self.theta)
+        # Normalisasi sudut yaw ke [-pi, pi]
+        self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
         
+        # Konversi theta ke Quaternion
+        q = euler_to_quaternion(0.0, 0.0, self.theta)
         msg_time = current_time.to_msg()
         
-        # 1. Publish Transformasi (TF) dari odom -> base_link
+        # 1. Publish Transformasi (TF) odom -> base_link
         t = TransformStamped()
         t.header.stamp = msg_time
-        t.header.frame_id = 'odom'
-        t.child_frame_id = 'base_link'
+        t.header.frame_id = self.odom_frame
+        t.child_frame_id = self.base_frame
         
         t.transform.translation.x = self.x
         t.transform.translation.y = self.y
@@ -80,10 +129,9 @@ class OdometryNode(Node):
         # 2. Publish topik /odom
         odom = Odometry()
         odom.header.stamp = msg_time
-        odom.header.frame_id = 'odom'
-        odom.child_frame_id = 'base_link'
+        odom.header.frame_id = self.odom_frame
+        odom.child_frame_id = self.base_frame
         
-        # Data Posisi (Pose)
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y
         odom.pose.pose.position.z = 0.0
@@ -92,12 +140,25 @@ class OdometryNode(Node):
         odom.pose.pose.orientation.z = q[2]
         odom.pose.pose.orientation.w = q[3]
         
-        # Data Kecepatan (Twist) - Kecepatan pada frame base_link
-        odom.twist.twist.linear.x = vx
-        odom.twist.twist.linear.y = vy
-        odom.twist.twist.angular.z = wz
+        # Covariance Pose Standar
+        odom.pose.covariance[0] = 0.001
+        odom.pose.covariance[7] = 0.001
+        odom.pose.covariance[14] = 1000000.0
+        odom.pose.covariance[21] = 1000000.0
+        odom.pose.covariance[28] = 1000000.0
+        odom.pose.covariance[35] = 0.001
         
-        # Optional: Tambahkan covariance matrix di sini jika Anda menggunakan filter seperti EKF (robot_localization)
+        odom.twist.twist.linear.x = active_vx
+        odom.twist.twist.linear.y = active_vy
+        odom.twist.twist.angular.z = active_wz
+        
+        # Covariance Twist Standar
+        odom.twist.covariance[0] = 0.001
+        odom.twist.covariance[7] = 0.001
+        odom.twist.covariance[14] = 1000000.0
+        odom.twist.covariance[21] = 1000000.0
+        odom.twist.covariance[28] = 1000000.0
+        odom.twist.covariance[35] = 0.001
         
         self.odom_pub.publish(odom)
 
@@ -106,11 +167,12 @@ def main(args=None):
     node = OdometryNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
