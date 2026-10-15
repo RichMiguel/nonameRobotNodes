@@ -33,7 +33,7 @@ bt_navigator:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    controller_frequency: 10.0
+    controller_frequency: 20.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
@@ -63,8 +63,6 @@ controller_server:
       min_lookahead_dist: 0.20 # Jarak minimum saat robot melambat
       max_lookahead_dist: 0.60 # Batas maksimum proyeksi carrot agar tidak mendeteksi dinding yang masih jauh
       lookahead_time: 1.0
-      use_rotate_to_heading: true
-      rotate_to_heading_min_angle: 0.5
       rotate_to_heading_angular_vel: 0.8
       transform_tolerance: 0.5
       use_velocity_scaled_lookahead_dist: true # Carrot menyusut saat robot mendekati rintangan/tujuan
@@ -109,7 +107,7 @@ local_costmap:
           data_type: "LaserScan"
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0 # Penurunan cost lebih cepat menjauh dari dinding
+        cost_scaling_factor: 5.0 # Penurunan cost lebih cepat menjauh dari dinding
         inflation_radius: 0.35
 
 global_costmap:
@@ -145,8 +143,8 @@ global_costmap:
           data_type: "LaserScan"
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0
-        inflation_radius: 0.4
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.45
 
 map_server:
   ros__parameters:
@@ -170,9 +168,9 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: True
     feedback: "OPEN_LOOP"
-    max_velocity: [0.35, 0.0, 0.8] # [vx, vy, wz] max
-    min_velocity: [-0.35, 0.0, -0.8]
-    max_accel: [0.5, 0.0, 0.8] # Limit akselerasi
-    max_decel: [-0.5, 0.0, -0.8] # Limit deselerasi
+    max_velocity: [0.35, 0.0, 1.0] # [vx, vy, wz] max
+    min_velocity: [-0.35, 0.0, -1.0]
+    max_accel: [0.5, 0.0, 1.0] # Limit akselerasi
+    max_decel: [-0.5, 0.0, -1.0] # Limit deselerasi
     odom_topic: "odom"
     odom_duration: 0.1
