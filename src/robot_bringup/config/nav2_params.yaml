@@ -1,24 +1,24 @@
 amcl:
   ros__parameters:
     use_sim_time: False
-    alpha1: 0.2
-    alpha2: 0.2
-    alpha3: 0.2
-    alpha4: 0.2
-    alpha5: 0.2
-    transform_tolerance: 0.5
+    alpha1: 0.05
+    alpha2: 0.05
+    alpha3: 0.05
+    alpha4: 0.05
+    alpha5: 0.05
+    transform_tolerance: 0.2
     base_frame_id: "base_link"
     global_frame_id: "map"
     odom_frame_id: "odom"
-    max_particles: 2000
+    max_particles: 3000
     min_particles: 500
     scan_topic: scan
-    set_initial_pose: true
-    initial_pose:
-      x: 2.45
-      y: 1.8
-      z: 0.0
-      yaw: 0.0
+    set_initial_pose: false
+    # initial_pose:
+    #   x: 2.45
+    #   y: 1.8
+    #   z: 0.0
+    #   yaw: 0.0
 
 bt_navigator:
   ros__parameters:
@@ -59,11 +59,11 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       desired_linear_vel: 0.2
-      lookahead_dist: 0.30 # Jarak pandang forward carrot
+      lookahead_dist: 0.35 # Jarak pandang forward carrot
       min_lookahead_dist: 0.20 # Jarak minimum saat robot melambat
       max_lookahead_dist: 0.60 # Batas maksimum proyeksi carrot agar tidak mendeteksi dinding yang masih jauh
       lookahead_time: 1.0
-      rotate_to_heading_angular_vel: 0.8
+      rotate_to_heading_angular_vel: 1.0
       transform_tolerance: 0.5
       use_velocity_scaled_lookahead_dist: true # Carrot menyusut saat robot mendekati rintangan/tujuan
       min_approach_linear_velocity: 0.05
@@ -144,7 +144,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 5.0
-        inflation_radius: 0.45
+        inflation_radius: 0.4
 
 map_server:
   ros__parameters:
