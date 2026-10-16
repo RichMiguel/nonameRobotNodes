@@ -18,12 +18,12 @@ def generate_launch_description():
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
-        default_value=os.path.join(bringup_dir, 'maps', 'lab_map.yaml'),
+        default_value=os.path.join(bringup_dir, 'maps', 'lab_map_new.yaml'),
         description='Lokasi file peta .yaml')
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value='nav2_params_tight.yaml',
+        default_value='nav2_params_paper.yaml',
         description='Nama file konfigurasi Nav2 di robot_bringup/config/ (misal: nav2_params_tight.yaml atau nav2_params.yaml) atau path absolut ke file .yaml')
 
     # Resolusi cerdas params_file: jika nama file saja, cari di robot_bringup/config/, pastikan berekstensi .yaml

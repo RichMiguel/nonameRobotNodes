@@ -81,7 +81,7 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       # vmax = 0.5 m/s
-      desired_linear_vel: 0.50
+      desired_linear_vel: 0.25
       
       # L = 0.6 m, Lmin = 0.3 m, Lmax = 0.7 m
       lookahead_dist: 0.60
@@ -147,8 +147,8 @@ local_costmap:
           data_type: "LaserScan"
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 5.0
-        inflation_radius: 0.35
+        cost_scaling_factor: 4.0
+        inflation_radius: 0.2
 
 global_costmap:
   global_costmap:
@@ -183,7 +183,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.0
-        inflation_radius: 0.45
+        inflation_radius: 0.3
 
 map_server:
   ros__parameters:
@@ -208,10 +208,10 @@ velocity_smoother:
     scale_velocities: True
     feedback: "OPEN_LOOP"
     # Batasan kecepatan dari Table 1 (vmax = 0.5 m/s, w_max = 1.0 rad/s)
-    max_velocity: [0.50, 0.35, 1.0]
-    min_velocity: [-0.50, -0.35, -1.0]
+    max_velocity: [0.30, 0.01, 1.0]
+    min_velocity: [-0.30, -0.01, -1.0]
     # Batasan akselerasi & deselerasi dari Table 1 (a_max = 0.5 m/s^2, alpha_max = 1.0 rad/s^2)
-    max_accel: [0.50, 0.35, 1.0]
-    max_decel: [-0.50, -0.35, -1.0]
+    max_accel: [0.30, 0.01, 1.0]
+    max_decel: [-0.30, -0.01, -1.0]
     odom_topic: "odom"
     odom_duration: 0.1
