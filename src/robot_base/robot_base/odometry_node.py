@@ -29,10 +29,16 @@ class OdometryNode(Node):
         self.declare_parameter('odom_frame_id', 'odom')
         self.declare_parameter('base_frame_id', 'base_link')
         self.declare_parameter('vel_timeout', 0.5)          # Kecepatan dianggap 0 jika data serial terhenti > 0.5s
+        self.declare_parameter('linear_scale_x', 1.0)       # Faktor kalibrasi skala translasi sumbu X
+        self.declare_parameter('linear_scale_y', 1.0)       # Faktor kalibrasi skala translasi sumbu Y (strafe)
+        self.declare_parameter('angular_scale_z', 1.0)      # Faktor kalibrasi skala rotasi Yaw
         
         self.odom_frame = self.get_parameter('odom_frame_id').value
         self.base_frame = self.get_parameter('base_frame_id').value
         self.vel_timeout = self.get_parameter('vel_timeout').value
+        self.scale_x = float(self.get_parameter('linear_scale_x').value)
+        self.scale_y = float(self.get_parameter('linear_scale_y').value)
+        self.scale_z = float(self.get_parameter('angular_scale_z').value)
         frequency = self.get_parameter('odom_frequency').value
         timer_period = 1.0 / frequency
         
@@ -90,14 +96,17 @@ class OdometryNode(Node):
             active_vy = 0.0
             active_wz = 0.0
         else:
-            active_vx = self.vx
-            active_vy = self.vy
-            active_wz = self.wz
+            active_vx = self.vx * self.scale_x
+            active_vy = self.vy * self.scale_y
+            active_wz = self.wz * self.scale_z
             
-        # Integrasi Kinematik untuk Robot Holonomic
-        delta_x = (active_vx * math.cos(self.theta) - active_vy * math.sin(self.theta)) * dt
-        delta_y = (active_vx * math.sin(self.theta) + active_vy * math.cos(self.theta)) * dt
+        # Integrasi Kinematik untuk Robot Holonomic (2nd-Order Midpoint Integration)
+        # Menggunakan sudut tengah (theta_mid) untuk mencegah akumulasi error saat robot berputar sambil bergerak
         delta_theta = active_wz * dt
+        theta_mid = self.theta + (delta_theta * 0.5)
+        
+        delta_x = (active_vx * math.cos(theta_mid) - active_vy * math.sin(theta_mid)) * dt
+        delta_y = (active_vx * math.sin(theta_mid) + active_vy * math.cos(theta_mid)) * dt
         
         self.x += delta_x
         self.y += delta_y
