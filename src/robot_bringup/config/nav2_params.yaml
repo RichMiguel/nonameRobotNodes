@@ -10,8 +10,8 @@ amcl:
     base_frame_id: "base_link"
     global_frame_id: "map"
     odom_frame_id: "odom"
-    max_particles: 3000
-    min_particles: 1000
+    max_particles: 1500
+    min_particles: 500
     scan_topic: scan
     set_initial_pose: false
 
@@ -27,7 +27,7 @@ bt_navigator:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    controller_frequency: 20.0
+    controller_frequency: 15.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
@@ -69,8 +69,8 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 4.0
+      publish_frequency: 1.5
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time: False
@@ -142,7 +142,7 @@ map_server:
 
 planner_server:
   ros__parameters:
-    expected_planner_frequency: 20.0
+    expected_planner_frequency: 5.0
     use_sim_time: False
     planner_plugins: ["GridBased"]
     GridBased:
@@ -154,7 +154,7 @@ planner_server:
 velocity_smoother:
   ros__parameters:
     use_sim_time: False
-    smoothing_frequency: 20.0
+    smoothing_frequency: 15.0
     scale_velocities: True
     feedback: "OPEN_LOOP"
     max_velocity: [0.35, 0.3, 0.8]
