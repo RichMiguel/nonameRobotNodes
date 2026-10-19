@@ -81,14 +81,14 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       # vmax = 0.5 m/s
-      desired_linear_vel: 0.25
+      desired_linear_vel: 0.2
       
       # L = 0.6 m, Lmin = 0.3 m, Lmax = 0.7 m
       lookahead_dist: 0.60
       min_lookahead_dist: 0.30
       max_lookahead_dist: 0.70
       # lt = 1.4 (skala adaptif lookahead = v * lt)
-      lookahead_time: 1.40
+      lookahead_time: 1.0
       use_velocity_scaled_lookahead_dist: true
 
       # Rmin = 0.9 m (Curvature heuristic: deselerasi jika radius < 0.9m)
@@ -148,7 +148,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.0
-        inflation_radius: 0.2
+        inflation_radius: 0.3
 
 global_costmap:
   global_costmap:
@@ -183,7 +183,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.0
-        inflation_radius: 0.3
+        inflation_radius: 0.5
 
 map_server:
   ros__parameters:
