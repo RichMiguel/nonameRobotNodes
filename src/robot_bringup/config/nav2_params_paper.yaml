@@ -81,7 +81,7 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       # vmax = 0.5 m/s
-      desired_linear_vel: 0.2
+      desired_linear_vel: 0.25
       
       # L = 0.6 m, Lmin = 0.3 m, Lmax = 0.7 m
       lookahead_dist: 0.60
