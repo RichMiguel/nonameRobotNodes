@@ -31,7 +31,7 @@ class OdometryNode(Node):
         self.declare_parameter('vel_timeout', 0.5)          # Kecepatan dianggap 0 jika data serial terhenti > 0.5s
         self.declare_parameter('linear_scale_x', 1.15)       # Faktor kalibrasi skala translasi sumbu X
         self.declare_parameter('linear_scale_y', 1.0)       # Faktor kalibrasi skala translasi sumbu Y (strafe)
-        self.declare_parameter('angular_scale_z', 0.85)      # Faktor kalibrasi skala rotasi Yaw
+        self.declare_parameter('angular_scale_z', 1.0)     # Faktor kalibrasi skala rotasi Yaw
         
         self.odom_frame = self.get_parameter('odom_frame_id').value
         self.base_frame = self.get_parameter('base_frame_id').value
