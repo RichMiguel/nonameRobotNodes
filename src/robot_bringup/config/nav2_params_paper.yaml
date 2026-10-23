@@ -119,7 +119,7 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 4.0
+      update_frequency: 5.0
       publish_frequency: 1.5
       global_frame: odom
       robot_base_frame: base_link
