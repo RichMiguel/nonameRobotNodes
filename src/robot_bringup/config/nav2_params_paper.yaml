@@ -3,18 +3,18 @@ amcl:
     use_sim_time: False
     robot_model_type: "nav2_amcl::OmniMotionModel"
     # Parameter Noise Odometri untuk Holonomik X-Drive
-    alpha1: 0.3
-    alpha2: 0.3
-    alpha3: 0.3
-    alpha4: 0.3
-    alpha5: 0.3
+    alpha1: 0.1
+    alpha2: 0.1
+    alpha3: 0.1
+    alpha4: 0.1
+    alpha5: 0.1
     # Parameter Pemulihan Otomatis AMCL (Kidnapped Robot Recovery)
     recovery_alpha_slow: 0.001
     recovery_alpha_fast: 0.10
     # Threshold update standar
     update_min_d: 0.25
     update_min_a: 0.20
-    transform_tolerance: 0.1
+    transform_tolerance: 0.5
     base_frame_id: "base_link"
     global_frame_id: "map"
     odom_frame_id: "odom"
@@ -37,7 +37,7 @@ behavior_server:
       plugin: "nav2_behaviors/Wait"
     global_frame: odom
     robot_base_frame: base_link
-    transform_tolerance: 0.1
+    transform_tolerance: 0.5
     use_sim_time: False
     simulate_ahead_time: 1.0
     max_rotational_vel: 1.0
@@ -56,7 +56,7 @@ bt_navigator:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    # Disesuaikan ke 15 Hz agar hemat CPU Raspberry Pi 4B
+    # Disesuaikan ke 10 Hz agar hemat CPU Raspberry Pi 4B
     controller_frequency: 10.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
@@ -74,19 +74,19 @@ controller_server:
 
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.3
-      movement_time_allowance: 10.0
+      required_movement_radius: 0.2
+      movement_time_allowance: 15.0
 
     # RPP Controller dengan parameter eksperimen Table 1 dari Paper arXiv:2601.15006
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       # vmax = 0.5 m/s
-      desired_linear_vel: 0.25
+      desired_linear_vel: 0.2
       
-      # L = 0.6 m, Lmin = 0.3 m, Lmax = 0.7 m
-      lookahead_dist: 0.60
-      min_lookahead_dist: 0.30
-      max_lookahead_dist: 0.70
+      # Lookahead teredam untuk stabilitas anti-zigzag
+      lookahead_dist: 0.75
+      min_lookahead_dist: 0.55
+      max_lookahead_dist: 0.90
       # lt = 1.4 (skala adaptif lookahead = v * lt)
       lookahead_time: 1.0
       use_velocity_scaled_lookahead_dist: true
@@ -104,11 +104,11 @@ controller_server:
       cost_scaling_dist: 0.40
       cost_scaling_gain: 1.0
 
-      # Batasan akselerasi sudut dari paper (alpha_max = 1.0 rad/s^2, omega_max = 1.0 rad/s)
-      max_angular_accel: 1.0
-      rotate_to_heading_angular_vel: 1.0
+      # Batasan akselerasi sudut (dihaluskan untuk mencegah scan distortion dan zigzag)
+      max_angular_accel: 0.6
+      rotate_to_heading_angular_vel: 0.6
       use_rotate_to_heading: true
-      rotate_to_heading_min_angle: 1.22
+      rotate_to_heading_min_angle: 0.8
 
       # Safety & Collision Check
       use_collision_detection: true
@@ -123,12 +123,13 @@ local_costmap:
       publish_frequency: 1.5
       global_frame: odom
       robot_base_frame: base_link
+      transform_tolerance: 0.5
       use_sim_time: False
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.1
-      footprint: '[ [0.22, 0.22], [0.22, -0.22], [-0.22, -0.22], [-0.22, 0.22] ]'
+      resolution: 0.05
+      footprint: '[ [0.23, 0.23], [0.23, -0.23], [-0.23, -0.23], [-0.23, 0.23] ]'
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -148,7 +149,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.0
-        inflation_radius: 0.3
+        inflation_radius: 0.4
 
 global_costmap:
   global_costmap:
@@ -157,9 +158,10 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_link
+      transform_tolerance: 0.5
       use_sim_time: False
-      footprint: '[ [0.22, 0.22], [0.22, -0.22], [-0.22, -0.22], [-0.22, 0.22] ]'
-      resolution: 0.1
+      footprint: '[ [0.23, 0.23], [0.23, -0.23], [-0.23, -0.23], [-0.23, 0.23] ]'
+      resolution: 0.05
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       static_layer:
@@ -182,8 +184,8 @@ global_costmap:
           data_type: "LaserScan"
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0
-        inflation_radius: 0.5
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.55
 
 map_server:
   ros__parameters:
@@ -192,7 +194,7 @@ map_server:
 
 planner_server:
   ros__parameters:
-    expected_planner_frequency: 5.0
+    expected_planner_frequency: 1.0
     use_sim_time: False
     planner_plugins: ["GridBased"]
     GridBased:
@@ -204,7 +206,7 @@ planner_server:
 velocity_smoother:
   ros__parameters:
     use_sim_time: False
-    smoothing_frequency: 15.0
+    smoothing_frequency: 10.0
     scale_velocities: True
     feedback: "OPEN_LOOP"
     # Batasan kecepatan dari Table 1 (vmax = 0.5 m/s, w_max = 1.0 rad/s)

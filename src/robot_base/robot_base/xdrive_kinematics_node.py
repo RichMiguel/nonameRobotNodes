@@ -22,12 +22,12 @@ class XDriveKinematicsNode(Node):
     def __init__(self):
         super().__init__('xdrive_kinematics_node')
 
-        # Parameter Geometri Robot
-        self.declare_parameter('wheel_radius', 0.05)       # Jari-jari roda (meter)
-        self.declare_parameter('wheel_offset_x', 0.20)     # Jarak x pusat ke roda (meter)
-        self.declare_parameter('wheel_offset_y', 0.20)     # Jarak y pusat ke roda (meter)
-        self.declare_parameter('cmd_timeout', 0.5)         # Timeout berhenti jika tidak ada cmd_vel (detik)
-        self.declare_parameter('publish_rate', 50.0)       # Frekuensi update loop (Hz)
+        # Parameter Geometri Robot (Sinkron dengan Firmware: Roda 45mm, Radius Robot 24cm)
+        self.declare_parameter('wheel_radius', 0.045)       # Jari-jari roda (meter) = 45 mm
+        self.declare_parameter('wheel_offset_x', 0.1697)    # Jarak x pusat ke roda (meter) -> sqrt(x^2 + y^2) = 0.24m
+        self.declare_parameter('wheel_offset_y', 0.1697)    # Jarak y pusat ke roda (meter)
+        self.declare_parameter('cmd_timeout', 0.5)          # Timeout berhenti jika tidak ada cmd_vel (detik)
+        self.declare_parameter('publish_rate', 50.0)        # Frekuensi update loop (Hz)
 
         self.R = float(self.get_parameter('wheel_radius').value)
         self.Lx = float(self.get_parameter('wheel_offset_x').value)
