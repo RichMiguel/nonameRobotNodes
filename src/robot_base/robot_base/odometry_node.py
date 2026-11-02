@@ -4,6 +4,8 @@ from rclpy.node import Node
 import math
 from geometry_msgs.msg import TwistStamped, TransformStamped
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Empty
+from rcl_interfaces.msg import SetParametersResult
 from tf2_ros import TransformBroadcaster
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -67,12 +69,42 @@ class OdometryNode(Node):
         # Publisher standar Nav2
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
+
+        # Subscriber untuk Reset Odometri
+        self.reset_odom_sub = self.create_subscription(
+            Empty,
+            'reset_odom',
+            self.reset_odom_callback,
+            10
+        )
+
+        # Dynamic Parameter Updates Callback (Kalibrasi Skala Runtime)
+        self.add_on_set_parameters_callback(self.parameter_callback)
         
         # Pilar 2: Timer Periodik Mandiri (Continuous 50Hz TF Publisher)
         # Menjamin TF selalu ada dan tidak pernah starvation bahkan saat startup atau serial buffering
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         self.get_logger().info(f"Odometry Node (Holonomic) aktif: publishing periodik pada {frequency} Hz.")
+
+    def reset_odom_callback(self, msg: Empty):
+        self.x = 0.0
+        self.y = 0.0
+        self.theta = 0.0
+        self.get_logger().info("✅ Odometri berhasil di-RESET ke (0.0, 0.0, 0.0)")
+
+    def parameter_callback(self, params):
+        for param in params:
+            if param.name == 'linear_scale_x':
+                self.scale_x = float(param.value)
+                self.get_logger().info(f"🔄 Parameter linear_scale_x diperbarui: {self.scale_x}")
+            elif param.name == 'linear_scale_y':
+                self.scale_y = float(param.value)
+                self.get_logger().info(f"🔄 Parameter linear_scale_y diperbarui: {self.scale_y}")
+            elif param.name == 'angular_scale_z':
+                self.scale_z = float(param.value)
+                self.get_logger().info(f"🔄 Parameter angular_scale_z diperbarui: {self.scale_z}")
+        return SetParametersResult(successful=True)
 
     def vel_callback(self, msg: TwistStamped):
         self.vx = msg.twist.linear.x
