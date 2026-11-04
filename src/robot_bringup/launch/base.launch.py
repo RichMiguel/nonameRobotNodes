@@ -8,8 +8,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     ignore_hardware = LaunchConfiguration('ignore_hardware')
     use_gazebo = LaunchConfiguration('use_gazebo')
-
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+    use_check = LaunchConfiguration('use_check')
 
     declare_ignore_hardware_cmd = DeclareLaunchArgument(
         'ignore_hardware',
@@ -27,6 +27,12 @@ def generate_launch_description():
         'use_sim_time',
         default_value='false',
         description='Gunakan waktu simulasi jika berjalan di Gazebo'
+    )
+
+    declare_use_check_cmd = DeclareLaunchArgument(
+        'use_check',
+        default_value='false',
+        description='Jika false, fsm_node mengabaikan pengecekan kesiapan sistem (LiDAR, Odom, Nav2) dan langsung ke LISTEN'
     )
 
     # Hanya jalankan static tf base_link->laser jika BUKAN di Gazebo (karena URDF Gazebo sudah mempublishnya)
@@ -83,6 +89,7 @@ def generate_launch_description():
         name='fsm_node',
         output='screen',
         parameters=[{
+            'use_check': use_check,
             'bypass_health_check': ignore_hardware,
             'use_sim_time': use_sim_time
         }]
@@ -92,6 +99,7 @@ def generate_launch_description():
     ld.add_action(declare_ignore_hardware_cmd)
     ld.add_action(declare_use_gazebo_cmd)
     ld.add_action(declare_use_sim_time_cmd)
+    ld.add_action(declare_use_check_cmd)
     ld.add_action(static_tf_node)
     ld.add_action(fake_odom_tf_node)
     ld.add_action(fake_map_tf_node)

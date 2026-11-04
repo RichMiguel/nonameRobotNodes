@@ -23,7 +23,11 @@ class FSMNode(Node):
     def __init__(self):
         super().__init__('fsm_node')
         
+        self.declare_parameter('use_check', True)
         self.declare_parameter('bypass_health_check', False)
+        self.declare_parameter('check_lidar', True)
+        self.declare_parameter('check_odom', True)
+        self.declare_parameter('check_nav2', True)
         
         # 1. State: BOOT
         self.state = RobotState.BOOT
@@ -47,8 +51,14 @@ class FSMNode(Node):
         # Loop utama FSM (berjalan setiap 0.5 detik)
         self.fsm_timer = self.create_timer(0.5, self.fsm_loop)
         
-        # Selesai BOOT, langsung pindah ke CHECK
-        self.transition_to(RobotState.CHECK)
+        # Selesai BOOT: jika use_check=False atau bypass_health_check=True, langsung LISTEN
+        use_check = self.get_parameter('use_check').get_parameter_value().bool_value
+        bypass = self.get_parameter('bypass_health_check').get_parameter_value().bool_value
+        if not use_check or bypass:
+            self.get_logger().info("Health check dinonaktifkan (use_check=False). Memulai state LISTEN.")
+            self.transition_to(RobotState.LISTEN)
+        else:
+            self.transition_to(RobotState.CHECK)
 
     def transition_to(self, new_state):
         self.get_logger().info(f"[TRANSITION] {self.state.name} -> {new_state.name}")
@@ -109,22 +119,39 @@ class FSMNode(Node):
     def fsm_loop(self):
         if self.state == RobotState.CHECK:
             # 2. State: CHECK (Memastikan semua node dan sensor menyala)
+            use_check = self.get_parameter('use_check').get_parameter_value().bool_value
+            bypass = self.get_parameter('bypass_health_check').get_parameter_value().bool_value
+            
+            if not use_check or bypass:
+                self.get_logger().info("Health check dinonaktifkan (use_check=False). Memulai state LISTEN.")
+                self.transition_to(RobotState.LISTEN)
+                return
+
             self.get_logger().info("CHECKING Kesiapan Sistem...", once=True)
             
-            bypass = self.get_parameter('bypass_health_check').get_parameter_value().bool_value
-            nav2_ready = self.nav_to_pose_client.wait_for_server(timeout_sec=0.1)
+            check_lidar = self.get_parameter('check_lidar').get_parameter_value().bool_value
+            check_odom = self.get_parameter('check_odom').get_parameter_value().bool_value
+            check_nav2 = self.get_parameter('check_nav2').get_parameter_value().bool_value
             
-            if bypass or (self.lidar_ready and self.odom_ready and nav2_ready):
-                if bypass:
-                    self.get_logger().warn("BYPASS MODE AKTIF: Mengabaikan sensor hardware. Memulai LISTEN.")
-                else:
-                    self.get_logger().info("Semua sistem SIAP (LiDAR, Odometri, Nav2 Stack). Memulai state LISTEN.")
+            lidar_ok = (not check_lidar) or self.lidar_ready
+            odom_ok = (not check_odom) or self.odom_ready
+            nav2_ready = self.nav_to_pose_client.wait_for_server(timeout_sec=0.1) if check_nav2 else True
+            nav2_ok = (not check_nav2) or nav2_ready
+            
+            if lidar_ok and odom_ok and nav2_ok:
+                self.get_logger().info("Semua sistem SIAP. Memulai state LISTEN.")
                 self.transition_to(RobotState.LISTEN)
             else:
+                detail = []
+                if check_lidar:
+                    detail.append(f"LiDAR: {'OK' if lidar_ok else 'MENUNGGU'}")
+                if check_odom:
+                    detail.append(f"Odometri: {'OK' if odom_ok else 'MENUNGGU'}")
+                if check_nav2:
+                    detail.append(f"Nav2: {'OK' if nav2_ok else 'MENUNGGU'}")
+                
                 self.get_logger().info(
-                    f"Menunggu kesiapan sistem... [LiDAR: {'OK' if self.lidar_ready else 'MENUNGGU'}, "
-                    f"Odometri: {'OK' if self.odom_ready else 'MENUNGGU'}, "
-                    f"Nav2: {'OK' if nav2_ready else 'MENUNGGU'}]",
+                    f"Menunggu kesiapan sistem... [{', '.join(detail)}]",
                     throttle_duration_sec=2.0
                 )
                 
@@ -135,6 +162,11 @@ class FSMNode(Node):
             
         elif self.state == RobotState.CALCULATE:
             # 4. State: CALCULATE
+            if not self.nav_to_pose_client.wait_for_server(timeout_sec=1.0):
+                self.get_logger().error("Nav2 Action Server 'navigate_to_pose' tidak tersedia! Membatalkan target.")
+                self.transition_to(RobotState.LISTEN)
+                return
+
             self.get_logger().info("Mengirim target posisi ke Nav2 Action Server...")
             
             # Update timestamp ke waktu simulasi terkini agar tidak ditolak oleh Nav2

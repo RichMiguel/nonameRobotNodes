@@ -15,6 +15,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     ignore_hardware = LaunchConfiguration('ignore_hardware')
     use_gazebo = LaunchConfiguration('use_gazebo')
+    use_check = LaunchConfiguration('use_check')
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
@@ -46,13 +47,19 @@ def generate_launch_description():
         default_value='false',
         description='Menandakan bahwa sistem dijalankan dari Gazebo')
 
+    declare_use_check_cmd = DeclareLaunchArgument(
+        'use_check',
+        default_value='true',
+        description='Gunakan health check fsm_node (menunggu LiDAR, Odom, Nav2). Set false untuk langsung aktif.')
+
     # 2. Include Base Launch (TFs, Komunikasi, Odometri, FSM)
     base_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(bringup_dir, 'launch', 'base.launch.py')]),
         launch_arguments={
             'ignore_hardware': ignore_hardware, 
             'use_gazebo': use_gazebo,
-            'use_sim_time': use_sim_time
+            'use_sim_time': use_sim_time,
+            'use_check': use_check
         }.items()
     )
 
@@ -139,6 +146,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_ignore_hardware_cmd)
     ld.add_action(declare_use_gazebo_cmd)
+    ld.add_action(declare_use_check_cmd)
     ld.add_action(declare_run_nav2_cmd)
     ld.add_action(declare_run_slam_cmd)
     ld.add_action(declare_use_voice_cmd)

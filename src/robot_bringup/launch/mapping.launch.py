@@ -18,8 +18,15 @@ def generate_launch_description():
     lidar_baudrate = LaunchConfiguration('lidar_baudrate')
     slam_params_file = LaunchConfiguration('slam_params_file')
     run_teleop = LaunchConfiguration('run_teleop')
+    use_check = LaunchConfiguration('use_check')
 
     # Deklarasi Argumen Launch
+    declare_use_check_cmd = DeclareLaunchArgument(
+        'use_check',
+        default_value='false',
+        description='Gunakan health check fsm_node. Default false pada mapping karena Nav2 tidak dijalankan.'
+    )
+
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
         default_value='false',
@@ -68,7 +75,8 @@ def generate_launch_description():
         launch_arguments={
             'ignore_hardware': ignore_hardware,
             'use_gazebo': use_gazebo,
-            'use_sim_time': use_sim_time
+            'use_sim_time': use_sim_time,
+            'use_check': use_check
         }.items()
     )
 
@@ -108,6 +116,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_ignore_hardware_cmd)
     ld.add_action(declare_use_gazebo_cmd)
+    ld.add_action(declare_use_check_cmd)
     ld.add_action(declare_lidar_port_cmd)
     ld.add_action(declare_lidar_baudrate_cmd)
     ld.add_action(declare_slam_params_file_cmd)

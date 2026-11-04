@@ -18,12 +18,19 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     ignore_hardware = LaunchConfiguration('ignore_hardware')
     use_gazebo = LaunchConfiguration('use_gazebo')
+    use_check = LaunchConfiguration('use_check')
 
     # Deklarasi Argumen Launch
     declare_launch_base_cmd = DeclareLaunchArgument(
         'launch_base',
         default_value='true',
         description='Jalankan base hardware (komunikasi serial Arduino & odometri) bersama teleop. Set false jika base sudah berjalan di terminal lain.'
+    )
+
+    declare_use_check_cmd = DeclareLaunchArgument(
+        'use_check',
+        default_value='false',
+        description='Gunakan health check fsm_node. Default false pada teleop karena Nav2 tidak dijalankan.'
     )
 
     declare_linear_speed_cmd = DeclareLaunchArgument(
@@ -68,7 +75,8 @@ def generate_launch_description():
         launch_arguments={
             'ignore_hardware': ignore_hardware,
             'use_gazebo': use_gazebo,
-            'use_sim_time': use_sim_time
+            'use_sim_time': use_sim_time,
+            'use_check': use_check
         }.items(),
         condition=IfCondition(launch_base)
     )
@@ -97,6 +105,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_ignore_hardware_cmd)
     ld.add_action(declare_use_gazebo_cmd)
+    ld.add_action(declare_use_check_cmd)
 
     ld.add_action(base_launch)
     ld.add_action(teleop_node)
