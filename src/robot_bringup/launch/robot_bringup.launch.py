@@ -19,7 +19,7 @@ def generate_launch_description():
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
-        default_value=os.path.join(bringup_dir, 'maps', 'lab_map_new.yaml'),
+        default_value=os.path.join(bringup_dir, 'maps', 'hospital_map_lt1.yaml'),
         description='Lokasi file peta .yaml')
 
     declare_params_file_cmd = DeclareLaunchArgument(
