@@ -40,7 +40,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='link_base_laser',
-        arguments=['-0.1', '0', '0.2', '3.14159265', '0', '0', 'base_link', 'laser'],
+        arguments=['--x', '-0.1', '--y', '0', '--z', '0.2', '--yaw', '3.14159265', '--frame-id', 'base_link', '--child-frame-id', 'laser'],
         parameters=[{'use_sim_time': use_sim_time}],
         condition=UnlessCondition(use_gazebo)
     )
@@ -50,7 +50,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='fake_odom_tf',
-        arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+        arguments=['--frame-id', 'odom', '--child-frame-id', 'base_link'],
         parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(PythonExpression(["'", ignore_hardware, "' == 'true' and '", use_gazebo, "' == 'false'"]))
     )
@@ -59,7 +59,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         name='fake_map_tf',
-        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        arguments=['--frame-id', 'map', '--child-frame-id', 'odom'],
         parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(PythonExpression(["'", ignore_hardware, "' == 'true' and '", use_gazebo, "' == 'false'"]))
     )
