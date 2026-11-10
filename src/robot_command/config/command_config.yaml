@@ -1,0 +1,171 @@
+# ==============================================================================
+# Robot Command Configuration File (robot_command)
+# Mendukung kontrol navigasi, deteksi rintangan/tabrakan, replanning, dan feedback suara.
+# ==============================================================================
+
+server:
+  host: "0.0.0.0"
+  port: 5000                   # Port TCP kompatibel dengan comand-inst (NLU) & Dashboard
+  max_connections: 10
+  timeout_sec: 3.0
+  broadcast_feedback: true     # Kirim feedback real-time ke semua client yang tersambung
+
+safety:
+  enable_obstacle_detection: true
+  warning_distance: 0.55       # Jarak deteksi rintangan awal (meter)
+  critical_distance: 0.30      # Jarak kritis / potensi tabrakan (meter)
+  front_angle_min_deg: -50.0   # Sudut kiri sektor depan (derajat)
+  front_angle_max_deg: 50.0    # Sudut kanan sektor depan (derajat)
+  throttle_feedback_sec: 2.5   # Jeda minimum pengiriman peringatan rintangan yang sama
+
+navigation:
+  action_server: "navigate_to_pose"
+  goal_pose_topic: "/goal_pose"
+  scan_topic: "/scan"
+  plan_topic: "/plan"
+  odom_topic: "/odom"
+  replan_detection: true
+  replan_min_points_diff: 5     # Selisih perubahan titik path untuk mendeteksi lintasan baru
+  goal_timeout_sec: 180.0       # Timeout maksimal navigasi (detik)
+
+# Template kalimat feedback suara (TTS) dan tampilan Dashboard
+feedback_templates:
+  GOAL_ACCEPTED: "Perintah navigasi ke {location} diterima. Robot mulai bergerak."
+  NAVIGATING: "Robot sedang bergerak menuju {location}. Sisa jarak {distance:.1f} meter."
+  GOAL_REACHED: "Robot sudah sampai di {location}."
+  OBSTACLE_WARNING: "Peringatan! Terdeteksi rintangan di depan robot pada jarak {distance:.2f} meter."
+  OBSTACLE_CLEARED: "Rintangan di depan telah bersih. Robot melanjutkan perjalanan."
+  REPLANNING_PATH: "Jalur terhalang. Sedang menghitung lintasan baru menuju {location}."
+  GOAL_CANCELLED: "Perintah navigasi dibatalkan. Robot berhenti."
+  GOAL_ABORTED: "Gagal mencapai {location}. Rute tidak dapat dilalui atau terhalang total."
+  EMERGENCY_STOP: "Pemberhentian darurat diaktifkan. Semua motor dimatikan."
+  UNKNOWN_COMMAND: "Perintah tidak dikenali oleh sistem."
+  LOCATION_NOT_FOUND: "Lokasi {location} tidak ditemukan dalam daftar waypoint."
+
+# Daftar Titik Tujuan (Waypoints / Rooms)
+waypoints:
+  ruang_203:
+    x: 0.069
+    y: 3.984
+    yaw: -0.248
+    name: "Ruang 203"
+    aliases: ["kamar 203", "ruangan 203", "203"]
+
+  ruang_melati:
+    x: -4.01
+    y: 4.011
+    yaw: 0.318
+    name: "Ruang Melati"
+    aliases: ["kamar melati", "melati"]
+
+  lobi:
+    x: -2.33
+    y: -1.51
+    yaw: 1.57
+    name: "Lobi Utama"
+    aliases: ["lobi", "lobby", "ruang tunggu", "depan"]
+
+  poli_umum:
+    x: -3.508
+    y: -3.485
+    yaw: 0.766
+    name: "Poli Umum"
+    aliases: ["poliklinik umum", "poliklinik", "poli"]
+
+  ruang_1:
+    x: 2.915
+    y: 6.686
+    yaw: -3.137
+    name: "Ruang 1"
+    aliases: ["ruang satu", "kamar satu", "kamar 1", "1"]
+
+  ruang_2:
+    x: 3.062
+    y: 2.217
+    yaw: -3.132
+    name: "Ruang 2"
+    aliases: ["ruang dua", "kamar dua", "kamar 2", "2"]
+
+  ruang_101:
+    x: 6.278
+    y: 4.223
+    yaw: 0.037
+    name: "Ruang 101"
+    aliases: ["kamar 101", "ruangan 101", "101"]
+
+  ruang_102:
+    x: 16.206
+    y: 4.564
+    yaw: -3.132
+    name: "Ruang 102"
+    aliases: ["kamar 102", "ruangan 102", "102"]
+
+  ruang_103:
+    x: 26.48
+    y: 4.848
+    yaw: 0.013
+    name: "Ruang 103"
+    aliases: ["kamar 103", "ruangan 103", "103"]
+
+  ruang_104:
+    x: 16.293
+    y: -4.012
+    yaw: -3.129
+    name: "Ruang 104"
+    aliases: ["kamar 104", "ruangan 104", "104"]
+
+  ruang_105:
+    x: 8.846
+    y: -2.529
+    yaw: -1.56
+    name: "Ruang 105"
+    aliases: ["kamar 105", "ruangan 105", "105"]
+
+  ruang_icu:
+    x: 5.0
+    y: 2.0
+    yaw: 1.57
+    name: "Ruang ICU"
+    aliases: ["icu", "kamar icu", "intensive care"]
+
+  lorong_1:
+    x: 5.82
+    y: -0.016
+    yaw: 0.018
+    name: "Lorong 1"
+    aliases: ["koridor satu", "lorong satu"]
+
+  lorong_2:
+    x: 18.096
+    y: 0.341
+    yaw: 0.016
+    name: "Lorong 2"
+    aliases: ["koridor dua", "lorong dua"]
+
+  lorong_3:
+    x: 25.008
+    y: 0.7
+    yaw: 0.013
+    name: "Lorong 3"
+    aliases: ["koridor tiga", "lorong tiga"]
+
+  lorong_4:
+    x: -7.177
+    y: -3.837
+    yaw: -1.561
+    name: "Lorong 4"
+    aliases: ["koridor empat", "lorong empat"]
+
+  lorong_5:
+    x: -16.72
+    y: -0.149
+    yaw: 3.141
+    name: "Lorong 5"
+    aliases: ["koridor lima", "lorong lima"]
+
+  home:
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+    name: "Base / Home"
+    aliases: ["posisi awal", "kembali ke home", "base", "stasiun awal"]

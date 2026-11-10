@@ -2,15 +2,15 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # Node untuk Voice Command Parser
-    voice_parser_node = Node(
-        package='robot_voice_nav',
-        executable='voice_cmd_parser',
-        name='voice_cmd_parser_node',
+    # Node Robot Command Coordinator (sebelumnya voice_cmd_parser)
+    command_node = Node(
+        package='robot_command',
+        executable='command_node',
+        name='robot_command_node',
         output='screen'
     )
 
     ld = LaunchDescription()
-    ld.add_action(voice_parser_node)
+    ld.add_action(command_node)
     
     return ld
