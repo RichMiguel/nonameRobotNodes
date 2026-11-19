@@ -81,7 +81,7 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       # vmax = 0.5 m/s
-      desired_linear_vel: 0.25
+      desired_linear_vel: 0.35
       
       # Lookahead teredam untuk stabilitas anti-zigzag
       lookahead_dist: 0.5
@@ -210,10 +210,10 @@ velocity_smoother:
     scale_velocities: True
     feedback: "OPEN_LOOP"
     # Batasan kecepatan dari Table 1 (vmax = 0.5 m/s, w_max = 1.0 rad/s)
-    max_velocity: [0.30, 0.01, 1.0]
-    min_velocity: [-0.30, -0.01, -1.0]
+    max_velocity: [0.35, 0.01, 1.0]
+    min_velocity: [-0.35, -0.01, -1.0]
     # Batasan akselerasi & deselerasi dari Table 1 (a_max = 0.5 m/s^2, alpha_max = 1.0 rad/s^2)
-    max_accel: [0.30, 0.01, 1.0]
-    max_decel: [-0.30, -0.01, -1.0]
+    max_accel: [0.35, 0.01, 1.0]
+    max_decel: [-0.35, -0.01, -1.0]
     odom_topic: "odom"
     odom_duration: 0.1
