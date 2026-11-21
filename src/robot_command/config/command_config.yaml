@@ -87,36 +87,36 @@ waypoints:
     aliases: ["ruang dua", "kamar dua", "kamar 2", "2"]
 
   ruang_101:
-    x: 6.278
-    y: 4.223
-    yaw: 0.037
+    x: 4.528
+    y: 4.394
+    yaw: 0.007
     name: "Ruang 101"
     aliases: ["kamar 101", "ruangan 101", "101"]
 
   ruang_102:
-    x: 16.206
-    y: 4.564
-    yaw: -3.132
+    x: 18.159
+    y: 4.681
+    yaw: -3.133
     name: "Ruang 102"
     aliases: ["kamar 102", "ruangan 102", "102"]
 
   ruang_103:
-    x: 26.48
-    y: 4.848
-    yaw: 0.013
+    x: 24.538
+    y: 4.769
+    yaw: 0.014
     name: "Ruang 103"
     aliases: ["kamar 103", "ruangan 103", "103"]
 
   ruang_104:
-    x: 16.293
-    y: -4.012
-    yaw: -3.129
+    x: 18.491
+    y: -4.061
+    yaw: -3.127
     name: "Ruang 104"
     aliases: ["kamar 104", "ruangan 104", "104"]
 
   ruang_105:
-    x: 8.846
-    y: -2.529
+    x: 9.3
+    y: -2.544
     yaw: -1.56
     name: "Ruang 105"
     aliases: ["kamar 105", "ruangan 105", "105"]
@@ -169,3 +169,10 @@ waypoints:
     yaw: 0.0
     name: "Base / Home"
     aliases: ["posisi awal", "kembali ke home", "base", "stasiun awal"]
+
+  stasiun:
+    x: 0.388
+    y: -0.776
+    yaw: 1.562
+    name: "Stasiun"
+    aliases: ["stasiun"]
