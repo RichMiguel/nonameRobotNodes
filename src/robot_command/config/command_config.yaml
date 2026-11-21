@@ -171,8 +171,8 @@ waypoints:
     aliases: ["posisi awal", "kembali ke home", "base", "stasiun awal"]
 
   stasiun:
-    x: 0.388
-    y: -0.776
-    yaw: 1.562
+    x: -3.588
+    y: 0.626
+    yaw: -1.571
     name: "Stasiun"
     aliases: ["stasiun"]
