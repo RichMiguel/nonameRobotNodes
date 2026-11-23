@@ -82,6 +82,18 @@ def generate_launch_description():
         'run_slam',
         default_value='false',
         description='Apakah akan menjalankan SLAM Toolbox (Pemetaan)')
+
+    declare_use_als_cmd = DeclareLaunchArgument(
+        'use_als',
+        default_value='false',
+        description='Gunakan als_ros2 (MCL) sebagai pengganti AMCL untuk lokalisasi')
+
+    declare_initial_pose_x_cmd = DeclareLaunchArgument(
+        'initial_pose_x', default_value='0.0', description='Initial X pose untuk als_ros2 (meter)')
+    declare_initial_pose_y_cmd = DeclareLaunchArgument(
+        'initial_pose_y', default_value='0.0', description='Initial Y pose untuk als_ros2 (meter)')
+    declare_initial_pose_yaw_cmd = DeclareLaunchArgument(
+        'initial_pose_yaw', default_value='0.0', description='Initial Yaw pose untuk als_ros2 (derajat)')
         
     declare_use_voice_cmd = DeclareLaunchArgument(
         'use_voice',
@@ -90,6 +102,10 @@ def generate_launch_description():
 
     run_nav2 = LaunchConfiguration('run_nav2')
     run_slam = LaunchConfiguration('run_slam')
+    use_als = LaunchConfiguration('use_als')
+    initial_pose_x = LaunchConfiguration('initial_pose_x')
+    initial_pose_y = LaunchConfiguration('initial_pose_y')
+    initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
     use_voice = LaunchConfiguration('use_voice')
     lidar_port = LaunchConfiguration('lidar_port')
     lidar_baudrate = LaunchConfiguration('lidar_baudrate')
@@ -103,7 +119,7 @@ def generate_launch_description():
             'serial_baudrate': lidar_baudrate
         }.items()
     )
-    # 4. AMCL dan Map Server (Jalan jika run_slam = false)
+    # 4. AMCL dan Map Server (Jalan jika run_slam = false dan use_als = false)
     amcl_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('nav2_bringup'), 'launch', 'localization_launch.py')]),
@@ -111,7 +127,25 @@ def generate_launch_description():
             'map': map_yaml_file,
             'use_sim_time': use_sim_time,
             'params_file': resolved_params_file}.items(),
-        condition=__import__('launch').conditions.UnlessCondition(run_slam)
+        condition=__import__('launch').conditions.UnlessCondition(
+            PythonExpression(["'", run_slam, "' == 'true' or '", use_als, "' == 'true'"])
+        )
+    )
+
+    # 4b. ALS ROS 2 MCL dan Map Server (Jalan jika run_slam = false dan use_als = true)
+    als_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(bringup_dir, 'launch', 'als_localization.launch.py')]),
+        launch_arguments={
+            'map': map_yaml_file,
+            'use_sim_time': use_sim_time,
+            'als_params_file': resolved_params_file,
+            'initial_pose_x': initial_pose_x,
+            'initial_pose_y': initial_pose_y,
+            'initial_pose_yaw': initial_pose_yaw,
+        }.items(),
+        condition=__import__('launch').conditions.IfCondition(
+            PythonExpression(["'", run_slam, "' == 'false' and '", use_als, "' == 'true'"])
+        )
     )
 
     # 5. Nav2 Planner & Controller (Jalan jika run_nav2 = true)
@@ -149,6 +183,10 @@ def generate_launch_description():
     ld.add_action(declare_use_check_cmd)
     ld.add_action(declare_run_nav2_cmd)
     ld.add_action(declare_run_slam_cmd)
+    ld.add_action(declare_use_als_cmd)
+    ld.add_action(declare_initial_pose_x_cmd)
+    ld.add_action(declare_initial_pose_y_cmd)
+    ld.add_action(declare_initial_pose_yaw_cmd)
     ld.add_action(declare_use_voice_cmd)
     ld.add_action(declare_lidar_port_cmd)
     ld.add_action(declare_lidar_baudrate_cmd)
@@ -156,6 +194,7 @@ def generate_launch_description():
     ld.add_action(base_launch)
     ld.add_action(lidar_launch)
     ld.add_action(amcl_launch)
+    ld.add_action(als_launch)
     ld.add_action(navigation_launch)
     ld.add_action(slam_launch)
     ld.add_action(voice_launch)
