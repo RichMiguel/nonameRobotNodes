@@ -115,7 +115,7 @@ waypoints:
     aliases: ["kamar 104", "ruangan 104", "104"]
 
   ruang_105:
-    x: 9.3
+    x: 8.71913
     y: -2.544
     yaw: -1.56
     name: "Ruang 105"
