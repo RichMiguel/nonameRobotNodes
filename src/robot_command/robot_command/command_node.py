@@ -15,6 +15,7 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 from action_msgs.msg import GoalStatusArray, GoalStatus
 from nav2_msgs.action import NavigateToPose
+from nav2_msgs.srv import ClearEntireCostmap
 
 import socket
 import select
@@ -33,6 +34,7 @@ class CommandCoordinatorNode(Node):
         # 1. Deklarasi Parameter ROS 2
         self.declare_parameter('config_file', '')
         self.declare_parameter('tcp_port', 5000)
+        self.declare_parameter('clear_global_costmap_on_goal', True)
         
         # 2. Muat Konfigurasi YAML
         self.config = {}
@@ -86,9 +88,12 @@ class CommandCoordinatorNode(Node):
         # Pantau status action server Nav2
         self.create_subscription(GoalStatusArray, '/navigate_to_pose/_action/status', self.nav2_status_callback, 10)
         
-        # 6. Action Client ke Nav2
+        # 6. Action Client ke Nav2 & Service Client Clear Global Costmap
         action_server = self.config['navigation'].get('action_server', 'navigate_to_pose')
         self.nav2_client = ActionClient(self, NavigateToPose, action_server)
+        self.clear_global_costmap_client = self.create_client(
+            ClearEntireCostmap, '/global_costmap/clear_entirely_global_costmap'
+        )
         
         # 7. Timer Periodik Status Publish (1 Hz)
         self.status_timer = self.create_timer(1.0, self.publish_periodic_status)
@@ -389,27 +394,43 @@ class CommandCoordinatorNode(Node):
         pose.pose.orientation.z = math.sin(yaw / 2.0)
         pose.pose.orientation.w = math.cos(yaw / 2.0)
         
-        # 1. Publish ke topik /goal_pose (Kompatibilitas FSM & RViz)
-        self.goal_pub.publish(pose)
-        
-        # 2. Kirim via Action Client jika server Nav2 aktif
-        if self.nav2_client.wait_for_server(timeout_sec=0.5):
-            goal_msg = NavigateToPose.Goal()
-            goal_msg.pose = pose
-            send_goal_future = self.nav2_client.send_goal_async(
-                goal_msg, 
-                feedback_callback=self.nav2_feedback_callback
-            )
-            send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+        clear_enabled = self.get_parameter('clear_global_costmap_on_goal').get_parameter_value().bool_value
+        if clear_enabled and self.clear_global_costmap_client.service_is_ready():
+            self.get_logger().info("Membersihkan global_costmap sebelum mengirim goal baru...")
+            clear_future = self.clear_global_costmap_client.call_async(ClearEntireCostmap.Request())
+            clear_future.add_done_callback(lambda f, p=pose: self._after_clear_costmap(f, p))
         else:
-            self.get_logger().info("Nav2 Action Server belum siap, target dipublish via /goal_pose.")
-            
+            self._dispatch_navigation_goal(pose)
+
         self.emit_feedback("GOAL_ACCEPTED", data={
             "location": name,
             "x": x,
             "y": y,
             "yaw": yaw
         })
+
+    def _after_clear_costmap(self, future, pose: PoseStamped):
+        try:
+            future.result()
+        except Exception as e:
+            self.get_logger().warn(f"Gagal clear global_costmap (tetap lanjut navigasi): {e}")
+        self._dispatch_navigation_goal(pose)
+
+    def _dispatch_navigation_goal(self, pose: PoseStamped):
+        # 1. Publish ke topik /goal_pose (Kompatibilitas FSM & RViz)
+        self.goal_pub.publish(pose)
+
+        # 2. Kirim via Action Client jika server Nav2 aktif
+        if self.nav2_client.wait_for_server(timeout_sec=0.5):
+            goal_msg = NavigateToPose.Goal()
+            goal_msg.pose = pose
+            send_goal_future = self.nav2_client.send_goal_async(
+                goal_msg,
+                feedback_callback=self.nav2_feedback_callback
+            )
+            send_goal_future.add_done_callback(self.nav2_goal_response_callback)
+        else:
+            self.get_logger().info("Nav2 Action Server belum siap, target dipublish via /goal_pose.")
 
     def nav2_goal_response_callback(self, future):
         goal_handle = future.result()

@@ -12,6 +12,7 @@ import serial
 import struct
 import time
 from geometry_msgs.msg import Twist, TwistStamped
+from std_msgs.msg import Int32MultiArray
 
 # Konstanta Protokol (ROS2 -> Arduino)
 TX_HEADER_1 = 0xAA
@@ -22,12 +23,16 @@ CMD_SET_VELOCITY = 0x01
 RX_HEADER_1 = 0xBB
 RX_HEADER_2 = 0x66
 CMD_ODOMETRY = 0x01
+CMD_ODOM_TICKS = 0x09
+
+# Pemetaan panjang payload berdasarkan Command ID (Arduino -> ROS2)
+RX_PAYLOAD_SIZES = {
+    CMD_ODOMETRY: 6,     # 3 x int16 (vx, vy, wz) -> total 10 byte
+    CMD_ODOM_TICKS: 16,  # 4 x int32 (t1..t4)     -> total 20 byte
+}
 
 # Faktor Pengali (Multiplier) untuk konversi Float (m/s & rad/s) ke Int16 (mm/s & mrad/s)
 VEL_MULTIPLIER = 1000.0
-
-# Panjang Paket Odometri: Header (2) + CMD (1) + Payload (6) + Checksum (1) = 10 byte
-FEEDBACK_FRAME_LEN = 10
 
 
 class CommunicationNode(Node):
@@ -61,6 +66,11 @@ class CommunicationNode(Node):
         self.raw_vel_pub = self.create_publisher(
             TwistStamped,
             'raw_odom_vel',
+            10
+        )
+        self.ticks_pub = self.create_publisher(
+            Int32MultiArray,
+            'wheel_ticks',
             10
         )
         
@@ -161,8 +171,8 @@ class CommunicationNode(Node):
             self.close_serial()
             return
 
-        # FSM Buffer Stream Parsing (Tahan banting terhadap packet drop & noise)
-        while len(self._rx_buffer) >= FEEDBACK_FRAME_LEN:
+        # FSM Buffer Stream Parsing (Tahan banting terhadap packet drop, noise, & panjang paket dinamis)
+        while len(self._rx_buffer) >= 4:
             # 1. Cari Header 1 (0xBB)
             if self._rx_buffer[0] != RX_HEADER_1:
                 del self._rx_buffer[0]
@@ -173,23 +183,32 @@ class CommunicationNode(Node):
                 del self._rx_buffer[0]
                 continue
 
-            # Buffer memiliki setidaknya 1 frame lengkap
             cmd = self._rx_buffer[2]
-            payload = bytes(self._rx_buffer[3:9])
-            received_checksum = self._rx_buffer[9]
+            payload_size = RX_PAYLOAD_SIZES.get(cmd)
+            if payload_size is None:
+                # Command ID tidak dikenal -> geser 1 byte untuk resinkronisasi
+                del self._rx_buffer[0]
+                continue
+
+            frame_len = 4 + payload_size
+            if len(self._rx_buffer) < frame_len:
+                # Tunggu sisa byte frame masuk
+                break
+
+            payload = bytes(self._rx_buffer[3:3 + payload_size])
+            received_checksum = self._rx_buffer[3 + payload_size]
 
             # Verifikasi Checksum XOR
             calc_checksum = self.calculate_checksum(bytes([cmd]) + payload)
             if calc_checksum == received_checksum:
-                # Checksum Valid -> Ekstraksi dan publish
                 if cmd == CMD_ODOMETRY:
                     self.publish_raw_velocity(payload)
-                # Geser buffer melompati 1 frame valid
-                del self._rx_buffer[:FEEDBACK_FRAME_LEN]
+                elif cmd == CMD_ODOM_TICKS:
+                    self.publish_wheel_ticks(payload)
+                del self._rx_buffer[:frame_len]
             else:
-                # Checksum tidak cocok -> Geser 1 byte untuk mencari sinkronisasi frame berikutnya
                 self.get_logger().warn(
-                    f"Checksum mismatch pada frame biner (calc: {calc_checksum}, got: {received_checksum})",
+                    f"Checksum mismatch pada frame biner (cmd: {cmd}, calc: {calc_checksum}, got: {received_checksum})",
                     throttle_duration_sec=2.0
                 )
                 del self._rx_buffer[0]
@@ -215,6 +234,13 @@ class CommunicationNode(Node):
         msg.twist.angular.z = wz
         
         self.raw_vel_pub.publish(msg)
+
+    def publish_wheel_ticks(self, payload: bytes):
+        """Membongkar payload 16-byte (4x int32) tick encoder kumulatif ke Int32MultiArray."""
+        t1, t2, t3, t4 = struct.unpack('<iiii', payload)
+        msg = Int32MultiArray()
+        msg.data = [t1, t2, t3, t4]
+        self.ticks_pub.publish(msg)
 
     def destroy_node(self):
         self.close_serial()

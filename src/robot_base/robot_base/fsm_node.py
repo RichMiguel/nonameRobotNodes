@@ -6,6 +6,7 @@ import time
 
 from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
+from nav2_msgs.srv import ClearEntireCostmap
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -28,6 +29,7 @@ class FSMNode(Node):
         self.declare_parameter('check_lidar', True)
         self.declare_parameter('check_odom', True)
         self.declare_parameter('check_nav2', True)
+        self.declare_parameter('clear_global_costmap_on_goal', True)
         
         # 1. State: BOOT
         self.state = RobotState.BOOT
@@ -45,8 +47,11 @@ class FSMNode(Node):
         # Subscriber untuk menerima target tujuan dari RViz2/Dashboard
         self.create_subscription(PoseStamped, 'goal_pose', self.goal_callback, 10)
         
-        # Action Client ke Nav2 Behavior Tree Navigator
+        # Action Client ke Nav2 Behavior Tree Navigator & Service Client Clear Global Costmap
         self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.clear_global_costmap_client = self.create_client(
+            ClearEntireCostmap, '/global_costmap/clear_entirely_global_costmap'
+        )
         
         # Loop utama FSM (berjalan setiap 0.5 detik)
         self.fsm_timer = self.create_timer(0.5, self.fsm_loop)
@@ -167,19 +172,20 @@ class FSMNode(Node):
                 self.transition_to(RobotState.LISTEN)
                 return
 
-            self.get_logger().info("Mengirim target posisi ke Nav2 Action Server...")
-            
-            # Update timestamp ke waktu simulasi terkini agar tidak ditolak oleh Nav2
+            # Update timestamp ke waktu simulasi/sistem terkini agar tidak ditolak oleh Nav2
             self.current_goal.header.stamp = self.get_clock().now().to_msg()
-            
             goal_msg = NavigateToPose.Goal()
             goal_msg.pose = self.current_goal
-            
-            # Kirim goal ke Nav2 secara Asynchronous
-            self._send_goal_future = self.nav_to_pose_client.send_goal_async(goal_msg)
-            self._send_goal_future.add_done_callback(self.goal_response_callback)
-            
+
             self.transition_to(RobotState.MOVE)
+
+            clear_enabled = self.get_parameter('clear_global_costmap_on_goal').get_parameter_value().bool_value
+            if clear_enabled and self.clear_global_costmap_client.service_is_ready():
+                self.get_logger().info("Membersihkan global_costmap sebelum mengirim goal baru...")
+                clear_future = self.clear_global_costmap_client.call_async(ClearEntireCostmap.Request())
+                clear_future.add_done_callback(lambda f, g=goal_msg: self._after_clear_costmap(f, g))
+            else:
+                self._dispatch_nav2_goal(goal_msg)
             
         elif self.state == RobotState.MOVE:
             # 5. State: MOVE
@@ -193,6 +199,20 @@ class FSMNode(Node):
         elif self.state == RobotState.STOP:
             # 7. State: STOP
             pass
+
+    def _after_clear_costmap(self, future, goal_msg):
+        try:
+            future.result()
+        except Exception as e:
+            self.get_logger().warn(f"Gagal clear global_costmap (tetap lanjut navigasi): {e}")
+        self._dispatch_nav2_goal(goal_msg)
+
+    def _dispatch_nav2_goal(self, goal_msg):
+        if self.state != RobotState.MOVE:
+            return
+        self.get_logger().info("Mengirim target posisi ke Nav2 Action Server...")
+        self._send_goal_future = self.nav_to_pose_client.send_goal_async(goal_msg)
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
 
 def main(args=None):
     rclpy.init(args=args)

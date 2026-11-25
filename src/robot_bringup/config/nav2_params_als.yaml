@@ -92,7 +92,7 @@ mcl:
       - 0.0
       - 0.0
       - 0.0
-    resample_tresholds:
+    resample_thresholds:
       - 0.2
       - 0.2
       - 0.2
