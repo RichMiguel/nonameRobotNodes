@@ -176,3 +176,24 @@ waypoints:
     yaw: -1.571
     name: "Stasiun"
     aliases: ["stasiun"]
+
+  lorong_a:
+    x: -19.663
+    y: 0.09
+    yaw: -3.137
+    name: "Lorong A"
+    aliases: ["lorong a"]
+
+  lorong_b:
+    x: -12.856
+    y: -0.404
+    yaw: 0.002
+    name: "Lorong B"
+    aliases: ["lorong b"]
+
+  lorong_c:
+    x: -7.183
+    y: -1.903
+    yaw: -1.554
+    name: "Lorong C"
+    aliases: ["lorong c"]
